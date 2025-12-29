@@ -1,3 +1,5 @@
+package com.toleary.babyclock
+
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 

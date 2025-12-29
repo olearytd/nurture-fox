@@ -22,6 +22,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".TimerService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
     </application>
 
 </manifest>
