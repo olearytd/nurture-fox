@@ -57,4 +57,11 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    val roomVersion = "2.8.4"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    // Use "ksp" instead of "kapt" if you can, but for now let's use "annotationProcessor"
+    // to keep it simple for your first project
+    annotationProcessor("androidx.room:room-compiler:$roomVersion")
 }
