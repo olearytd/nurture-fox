@@ -24,7 +24,9 @@ class MainActivity : ComponentActivity() {
 
         // This pops up the "Allow Notifications?" box on first run
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
         }
 
         // Setup the "channel" so Android allows the notification
@@ -61,7 +63,8 @@ class MainActivity : ComponentActivity() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Baby Timer"
-            val importance = NotificationManager.IMPORTANCE_LOW
+            // Change LOW to DEFAULT so it's more visible
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel("BABY_CHANNEL", name, importance)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
