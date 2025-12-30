@@ -19,4 +19,7 @@ interface BabyDao {
 
     @Update
     suspend fun updateEvent(event: BabyEvent)
+
+    @Query("SELECT * FROM events_table WHERE type = 'FEED' ORDER BY timestamp DESC LIMIT 1")
+    suspend fun getLatestFeedSync(): BabyEvent?
 }

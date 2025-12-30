@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -68,14 +69,13 @@ class MainActivity : ComponentActivity() {
                                 onLogEvent = { value, unit, category ->
                                     lifecycleScope.launch {
                                         val event = BabyEvent(
-                                            type = category, // "FEED" or "DIAPER"
-                                            subtype = unit,   // "oz", "ml", or diaper type
+                                            type = category,
+                                            subtype = unit,
                                             amountMl = value.toFloatOrNull() ?: 0f,
                                             timestamp = System.currentTimeMillis()
                                         )
                                         BabyApplication.database.babyDao().insertEvent(event)
 
-                                        // Only start timer if it's a feed
                                         if (category == "FEED") {
                                             startBabyTimer(value)
                                         }
@@ -202,13 +202,17 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         .collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
-    // --- Automatic Conversion Totals Logic ---
+    // --- Goal & Summary State ---
+    var dailyGoalOz by remember { mutableFloatStateOf(32f) }
+    var showGoalDialog by remember { mutableStateOf(false) }
+
     val rawOz = events.filter { it.type == "FEED" && it.subtype == "oz" }.sumOf { it.amountMl.toDouble() }
     val rawMl = events.filter { it.type == "FEED" && it.subtype == "ml" }.sumOf { it.amountMl.toDouble() }
 
     val combinedTotalMl = (rawOz * 30.0) + rawMl
-    val combinedTotalOz = combinedTotalMl / 30.0
+    val combinedTotalOz = (combinedTotalMl / 30.0).toFloat()
     val diaperCount = events.count { it.type == "DIAPER" }
+    val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
 
     var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
 
@@ -216,9 +220,9 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         EditFeedDialog(
             event = editingEvent!!,
             onDismiss = { editingEvent = null },
-            onConfirm = { newAmount ->
+            onConfirm = { newAmountMl, newUnit ->
                 scope.launch {
-                    val updated = editingEvent!!.copy(amountMl = newAmount)
+                    val updated = editingEvent!!.copy(amountMl = newAmountMl, subtype = newUnit)
                     BabyApplication.database.babyDao().updateEvent(updated)
                     editingEvent = null
                 }
@@ -226,20 +230,50 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         )
     }
 
+    if (showGoalDialog) {
+        AlertDialog(
+            onDismissRequest = { showGoalDialog = false },
+            title = { Text("Set Daily Goal (oz)") },
+            text = {
+                OutlinedTextField(
+                    value = if (dailyGoalOz == 0f) "" else dailyGoalOz.toString(),
+                    onValueChange = { dailyGoalOz = it.toFloatOrNull() ?: 0f },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            },
+            confirmButton = { TextButton(onClick = { showGoalDialog = false }) { Text("Done") } }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(text = "Daily Summary", style = MaterialTheme.typography.headlineMedium)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(text = "Daily Summary", style = MaterialTheme.typography.headlineMedium)
+            IconButton(onClick = { showGoalDialog = true }) {
+                Icon(Icons.Default.Edit, contentDescription = "Edit Goal")
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                SummaryStat("Total Oz", "%.1f".format(combinedTotalOz))
-                SummaryStat("Total mL", "${combinedTotalMl.toInt()}")
-                SummaryStat("Diapers", "$diaperCount")
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    SummaryStat("Total Oz", "%.1f".format(combinedTotalOz))
+                    SummaryStat("Total mL", "${combinedTotalMl.toInt()}")
+                    SummaryStat("Diapers", "$diaperCount")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                )
+                Text(
+                    text = "${(progress * 100).toInt()}% of ${dailyGoalOz.toInt()}oz Goal",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.align(Alignment.End).padding(top = 4.dp)
+                )
             }
         }
 
@@ -296,24 +330,40 @@ fun SummaryStat(label: String, value: String) {
 }
 
 @Composable
-fun EditFeedDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float) -> Unit) {
-    var amount by remember { mutableStateOf(event.amountMl.toString()) }
+fun EditFeedDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float, String) -> Unit) {
+    // Standardizing to mL for precision editing (1oz = 30ml)
+    val initialAmountMl = if (event.subtype == "oz") (event.amountMl * 30f) else event.amountMl
+
+    // VISUAL FIX: Format to hide .0 but keep decimals if they exist (e.g. 105.5)
+    val formattedInitialValue = if (initialAmountMl % 1.0f == 0.0f) {
+        initialAmountMl.toInt().toString()
+    } else {
+        initialAmountMl.toString()
+    }
+
+    var amountText by remember { mutableStateOf(formattedInitialValue) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Amount") },
+        title = { Text("Edit Amount (mL)") },
         text = {
-            OutlinedTextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = { Text("Amount (${event.subtype})") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-            )
+            Column {
+                Text("Editing in mL for higher precision", style = MaterialTheme.typography.bodySmall)
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    label = { Text("Amount (mL)") },
+                    // This still allows the user to type a decimal if they want
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            }
         },
         confirmButton = {
             Button(onClick = {
-                onConfirm(amount.toFloatOrNull() ?: event.amountMl)
+                val finalValue = amountText.toFloatOrNull() ?: initialAmountMl
+                onConfirm(finalValue, "ml")
             }) {
-                Text("Save")
+                Text("Save as mL")
             }
         },
         dismissButton = {
