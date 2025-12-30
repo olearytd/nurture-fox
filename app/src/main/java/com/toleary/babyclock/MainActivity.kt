@@ -14,7 +14,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -23,10 +25,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.toleary.babyclock.ui.theme.BabyClockTheme
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
+import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.core.cartesian.axis.AxisItemPlacer
+import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
+import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,7 +60,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             BabyClockTheme {
                 var selectedTab by remember { mutableIntStateOf(0) }
-                val tabs = listOf("Tracker", "Daily Log")
+                val tabs = listOf("Tracker", "Daily Log", "Trends")
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -85,6 +98,7 @@ class MainActivity : ComponentActivity() {
                             1 -> DailyLogScreen(
                                 onDeleteLatest = { stopBabyTimer() }
                             )
+                            2 -> TrendsScreen()
                         }
                     }
                 }
@@ -128,8 +142,13 @@ fun BabyClockScreen(onLogEvent: (String, String, String) -> Unit) {
     var isOz by remember { mutableStateOf(true) }
     var showDiaperSheet by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
+    var quickAmountPref by remember { mutableStateOf(prefs.getString("quick_amount", "4") ?: "4") }
+
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -150,7 +169,7 @@ fun BabyClockScreen(onLogEvent: (String, String, String) -> Unit) {
             Text("Oz")
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
@@ -162,7 +181,7 @@ fun BabyClockScreen(onLogEvent: (String, String, String) -> Unit) {
             Text("Log Feed & Start Timer")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Button(
             onClick = { showDiaperSheet = true },
@@ -171,6 +190,26 @@ fun BabyClockScreen(onLogEvent: (String, String, String) -> Unit) {
         ) {
             Text("Log Diaper")
         }
+
+        Spacer(modifier = Modifier.height(48.dp))
+        HorizontalDivider()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Widget Settings", style = MaterialTheme.typography.titleMedium)
+
+        OutlinedTextField(
+            value = quickAmountPref,
+            onValueChange = {
+                quickAmountPref = it
+                prefs.edit().putString("quick_amount", it).apply()
+                scope.launch {
+                    ActionWidget().updateAll(context)
+                }
+            },
+            label = { Text("Quick Feed Amount (oz)") },
+            modifier = Modifier.width(240.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            trailingIcon = { Icon(Icons.Default.Edit, null) }
+        )
     }
 
     if (showDiaperSheet) {
@@ -202,7 +241,6 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         .collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
 
-    // --- Goal & Summary State ---
     var dailyGoalOz by remember { mutableFloatStateOf(32f) }
     var showGoalDialog by remember { mutableStateOf(false) }
 
@@ -211,7 +249,6 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
 
     val combinedTotalMl = (rawOz * 30.0) + rawMl
     val combinedTotalOz = (combinedTotalMl / 30.0).toFloat()
-    val diaperCount = events.count { it.type == "DIAPER" }
     val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
 
     var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
@@ -261,7 +298,7 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     SummaryStat("Total Oz", "%.1f".format(combinedTotalOz))
                     SummaryStat("Total mL", "${combinedTotalMl.toInt()}")
-                    SummaryStat("Diapers", "$diaperCount")
+                    SummaryStat("Diapers", "${events.count { it.type == "DIAPER" }}")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 LinearProgressIndicator(
@@ -285,9 +322,7 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                     confirmValueChange = { direction ->
                         if (direction == SwipeToDismissBoxValue.EndToStart) {
                             scope.launch {
-                                if (event == events.firstOrNull()) {
-                                    onDeleteLatest()
-                                }
+                                if (event == events.firstOrNull()) onDeleteLatest()
                                 BabyApplication.database.babyDao().deleteEvent(event)
                             }
                             true
@@ -302,10 +337,7 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                         val color = if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) {
                             MaterialTheme.colorScheme.errorContainer
                         } else Color.Transparent
-                        Box(
-                            Modifier.fillMaxSize().background(color).padding(horizontal = 20.dp),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
+                        Box(Modifier.fillMaxSize().background(color).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
                             Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
@@ -322,6 +354,154 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
 }
 
 @Composable
+fun TrendsScreen() {
+    val events by BabyApplication.database.babyDao().getAllEvents()
+        .collectAsState(initial = emptyList())
+
+    val now = System.currentTimeMillis()
+    val twentyFourHoursAgo = now - (24 * 60 * 60 * 1000L)
+    val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
+
+    val recentFeeds = events.filter { it.timestamp >= twentyFourHoursAgo && it.type == "FEED" }
+    val modelProducer24h = remember { CartesianChartModelProducer.build() }
+
+    LaunchedEffect(recentFeeds) {
+        modelProducer24h.tryRunTransaction {
+            columnSeries {
+                val entryList = mutableListOf<Float>()
+                for (i in 0..7) {
+                    val start = twentyFourHoursAgo + (i * 3 * 60 * 60 * 1000L)
+                    val end = start + (3 * 60 * 60 * 1000L)
+                    val vol = recentFeeds.filter { it.timestamp in start until end }.sumOf {
+                        if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0)
+                    }.toFloat()
+                    entryList.add(vol)
+                }
+                series(entryList)
+            }
+        }
+    }
+
+    val weeklyFeeds = events.filter { it.timestamp >= sevenDaysAgo && it.type == "FEED" }
+    val modelProducer7d = remember { CartesianChartModelProducer.build() }
+
+    LaunchedEffect(weeklyFeeds) {
+        modelProducer7d.tryRunTransaction {
+            columnSeries {
+                val dailyTotals = mutableListOf<Float>()
+                for (i in 0..6) {
+                    val dayStart = sevenDaysAgo + (i * 24 * 60 * 60 * 1000L)
+                    val dayEnd = dayStart + (24 * 60 * 60 * 1000L)
+                    val vol = weeklyFeeds.filter { it.timestamp in dayStart until dayEnd }.sumOf {
+                        if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0)
+                    }.toFloat()
+                    dailyTotals.add(vol)
+                }
+                series(dailyTotals)
+            }
+        }
+    }
+
+    val recentOz = recentFeeds.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() } / 30.0
+    val eventsByDay = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }
+    val dayCount = eventsByDay.size.coerceAtLeast(1)
+    val feedingEvents = events.filter { it.type == "FEED" }
+    val totalMl = feedingEvents.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() }
+    val totalOz = totalMl / 30.0
+    val avgOzPerDay = (totalOz / dayCount).toFloat()
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
+        Text("Trends & Habits", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ChartCard("Volume (oz) - Last 24h", modelProducer24h)
+        Spacer(modifier = Modifier.height(16.dp))
+        ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        StatCategoryCard("Last 24 Hours") {
+            StatRow("Recent Volume", "%.1f oz / %d ml".format(recentOz, (recentOz * 30).toInt()))
+            val diff = recentOz - avgOzPerDay
+            val diffColor = if (diff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+            Text(
+                text = if (diff >= 0) "+%.1f oz vs daily average".format(diff) else "%.1f oz vs daily average".format(diff),
+                style = MaterialTheme.typography.labelSmall, color = diffColor
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        StatCategoryCard("Feeding Patterns") {
+            StatRow("Total Volume", "${totalOz.toInt()} oz / ${totalMl.toInt()} ml")
+            StatRow("Daily Average", "%.1f oz".format(avgOzPerDay))
+            StatRow("Avg. per Bottle", "%.1f oz".format(if(feedingEvents.isNotEmpty()) totalOz/feedingEvents.size else 0.0))
+            StatRow("Bottles per Day", "%.1f".format(feedingEvents.size.toFloat() / dayCount))
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        StatCategoryCard("Diaper History") {
+            StatRow("Total Changes", "${events.count { it.type == "DIAPER" }}")
+            StatRow("Daily Average", "%.1f".format(events.count { it.type == "DIAPER" }.toFloat() / dayCount))
+            StatRow("Total Pees", "${events.count { it.subtype == "Pee" || it.subtype == "Both" }}")
+            StatRow("Total Poops", "${events.count { it.subtype == "Poop" || it.subtype == "Both" }}")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        StatCategoryCard("Intervals") {
+            val sortedFeeds = feedingEvents.sortedBy { it.timestamp }
+            if (sortedFeeds.size > 1) {
+                val spanHrs = (sortedFeeds.last().timestamp - sortedFeeds.first().timestamp) / (1000.0 * 60 * 60)
+                StatRow("Avg. Time Between Feeds", "%.1f hours".format(spanHrs / (sortedFeeds.size - 1)))
+            } else {
+                Text("Log more feeds to see intervals", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+fun ChartCard(title: String, modelProducer: CartesianChartModelProducer) {
+    Card(
+        modifier = Modifier.fillMaxWidth().height(220.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.labelMedium)
+            CartesianChartHost(
+                chart = rememberCartesianChart(
+                    rememberColumnCartesianLayer(),
+                    startAxis = rememberStartAxis(
+                        itemPlacer = AxisItemPlacer.Vertical.count(count = { 5 }),
+                        valueFormatter = { value, _, _ -> "${value.toInt()}oz" }
+                    ),
+                    bottomAxis = rememberBottomAxis(valueFormatter = { _, _, _ -> "" }),
+                ),
+                modelProducer = modelProducer,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+fun StatCategoryCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+fun StatRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
 fun SummaryStat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, style = MaterialTheme.typography.labelSmall)
@@ -331,16 +511,8 @@ fun SummaryStat(label: String, value: String) {
 
 @Composable
 fun EditFeedDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float, String) -> Unit) {
-    // Standardizing to mL for precision editing (1oz = 30ml)
     val initialAmountMl = if (event.subtype == "oz") (event.amountMl * 30f) else event.amountMl
-
-    // VISUAL FIX: Format to hide .0 but keep decimals if they exist (e.g. 105.5)
-    val formattedInitialValue = if (initialAmountMl % 1.0f == 0.0f) {
-        initialAmountMl.toInt().toString()
-    } else {
-        initialAmountMl.toString()
-    }
-
+    val formattedInitialValue = if (initialAmountMl % 1.0f == 0.0f) initialAmountMl.toInt().toString() else initialAmountMl.toString()
     var amountText by remember { mutableStateOf(formattedInitialValue) }
 
     AlertDialog(
@@ -353,7 +525,6 @@ fun EditFeedDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float, S
                     value = amountText,
                     onValueChange = { amountText = it },
                     label = { Text("Amount (mL)") },
-                    // This still allows the user to type a decimal if they want
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
             }
@@ -362,48 +533,40 @@ fun EditFeedDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float, S
             Button(onClick = {
                 val finalValue = amountText.toFloatOrNull() ?: initialAmountMl
                 onConfirm(finalValue, "ml")
-            }) {
-                Text("Save as mL")
-            }
+            }) { Text("Save as mL") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
 @Composable
 fun FeedingCard(event: BabyEvent) {
     val time = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(event.timestamp))
+    fun formatValue(v: Float) = if (v % 1.0f == 0.0f) v.toInt().toString() else "%.1f".format(v)
 
-    val displayAmount = if (event.amountMl % 1.0f == 0.0f) {
-        event.amountMl.toInt().toString()
+    val displayString = if (event.type == "FEED") {
+        if (event.subtype == "oz") {
+            val mlValue = (event.amountMl * 30f).toInt()
+            "${formatValue(event.amountMl)} oz / $mlValue ml"
+        } else {
+            val ozValue = event.amountMl / 30f
+            "${formatValue(ozValue)} oz / ${formatValue(event.amountMl)} ml"
+        }
     } else {
-        event.amountMl.toString()
+        event.subtype
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = if (event.type == "DIAPER")
-                MaterialTheme.colorScheme.secondaryContainer
-            else MaterialTheme.colorScheme.surfaceVariant
+                MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text(
-                    text = if (event.type == "FEED") "Bottle Feed" else "Diaper",
-                    style = MaterialTheme.typography.labelMedium
-                )
-                Text(
-                    text = if (event.type == "FEED") "$displayAmount ${event.subtype}" else event.subtype,
-                    style = MaterialTheme.typography.headlineSmall
-                )
+                Text(text = if (event.type == "FEED") "Bottle Feed" else "Diaper", style = MaterialTheme.typography.labelMedium)
+                Text(text = displayString, style = MaterialTheme.typography.headlineSmall)
             }
             Text(text = time, style = MaterialTheme.typography.bodyMedium)
         }

@@ -19,6 +19,11 @@ val AmountKey = ActionParameters.Key<String>("amount")
 
 class ActionWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
+
+        // Fetch the user's preferred quick amount from SharedPreferences
+        val prefs = context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE)
+        val prefAmount = prefs.getString("quick_amount", "4") ?: "4"
+
         provideContent {
             GlanceTheme {
                 Row(
@@ -27,9 +32,9 @@ class ActionWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Button(
-                        text = "+4oz",
+                        text = "+${prefAmount}oz", // Dynamically labels the button
                         onClick = actionRunCallback<LogFeedCallback>(
-                            actionParametersOf(AmountKey to "4")
+                            actionParametersOf(AmountKey to prefAmount)
                         )
                     )
                     Spacer(GlanceModifier.width(8.dp))
