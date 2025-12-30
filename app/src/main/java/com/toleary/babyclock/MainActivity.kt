@@ -152,7 +152,7 @@ fun BabyClockScreen(onLogEvent: (String, String, String) -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Baby Clock", style = MaterialTheme.typography.headlineLarge)
+        Text(text = "Nurture Fox", style = MaterialTheme.typography.headlineLarge)
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
