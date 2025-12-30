@@ -25,12 +25,14 @@ class TimerService : Service() {
             )
         }
 
+        val amount = intent?.getStringExtra("FEED_AMOUNT") ?: "0"
         val notification: Notification = NotificationCompat.Builder(this, "BABY_CHANNEL")
-            .setContentTitle("Last Fed")
+            .setContentTitle("Baby Fed")
+            .setContentText("Last bottle: $amount oz")
             .setSmallIcon(android.R.drawable.ic_menu_recent_history)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
-            .setUsesChronometer(true) // This makes the timer count up live!
+            .setUsesChronometer(true)
             .setWhen(startTime)
             .build()
 
