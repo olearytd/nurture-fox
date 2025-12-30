@@ -1,6 +1,6 @@
-Privacy Policy for Baby Clock
+Privacy Policy for Nurture Fox
 
-Data Collection: Baby Clock is designed to function locally on your device. We do not collect, store, or transmit any personal information, feeding logs, or diaper data to external servers. All data remains in a local database on your phone.
+Data Collection: Nurture Fox is designed to function locally on your device. We do not collect, store, or transmit any personal information, feeding logs, or diaper data to external servers. All data remains in a local database on your phone.
 
 Permissions: > * Notifications: Used only to display the active feeding timer.
 
