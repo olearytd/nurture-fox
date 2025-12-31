@@ -63,9 +63,14 @@ class MainActivity : ComponentActivity() {
                 var selectedTab by remember { mutableIntStateOf(0) }
                 val tabs = listOf("Tracker", "Daily Log", "Trends")
 
+                // Feedback State
+                val snackbarHostState = remember { SnackbarHostState() }
+                val scope = rememberCoroutineScope()
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize().safeDrawingPadding(),
                     containerColor = MaterialTheme.colorScheme.background,
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
                         TabRow(selectedTabIndex = selectedTab) {
                             tabs.forEachIndexed { index, title ->
@@ -91,6 +96,14 @@ class MainActivity : ComponentActivity() {
                                         )
                                         BabyApplication.database.babyDao().insertEvent(event)
                                         if (category == "FEED") startBabyTimer(value, timestamp)
+
+                                        // FEEDBACK: Snackbar pops up
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(
+                                                message = "${category.lowercase().replaceFirstChar { it.uppercase() }} logged!",
+                                                duration = SnackbarDuration.Short
+                                            )
+                                        }
                                     }
                                 }
                             )
@@ -131,9 +144,6 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
     var isOz by remember { mutableStateOf(true) }
     var showDiaperSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
-    var quickAmountPref by remember { mutableStateOf(prefs.getString("quick_amount", "4") ?: "4") }
 
     var customTimestamp by remember { mutableStateOf<Long?>(null) }
     val displayTime = customTimestamp?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(it)) } ?: "Now"
@@ -192,7 +202,12 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
 fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
-    var dailyGoalOz by remember { mutableFloatStateOf(32f) }
+    val context = LocalContext.current
+
+    // PERSISTENCE FIX: Save/Load Goal
+    val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
+    var dailyGoalOz by remember { mutableFloatStateOf(prefs.getFloat("daily_goal", 32f)) }
+
     var showGoalDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
 
@@ -211,7 +226,17 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     }
 
     if (showGoalDialog) {
-        AlertDialog(onDismissRequest = { showGoalDialog = false }, title = { Text("Set Daily Goal (oz)") }, text = { OutlinedTextField(value = if (dailyGoalOz == 0f) "" else dailyGoalOz.toString(), onValueChange = { dailyGoalOz = it.toFloatOrNull() ?: 0f }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)) }, confirmButton = { TextButton(onClick = { showGoalDialog = false }) { Text("Done") } })
+        AlertDialog(onDismissRequest = { showGoalDialog = false }, title = { Text("Set Daily Goal (oz)") }, text = {
+            OutlinedTextField(
+                value = if (dailyGoalOz == 0f) "" else dailyGoalOz.toString(),
+                onValueChange = {
+                    val goal = it.toFloatOrNull() ?: 0f
+                    dailyGoalOz = goal
+                    prefs.edit().putFloat("daily_goal", goal).apply()
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+        }, confirmButton = { TextButton(onClick = { showGoalDialog = false }) { Text("Done") } })
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
@@ -338,7 +363,6 @@ fun TrendsScreen() {
         ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // RESTORED: Last 24 Hours Section
         StatCategoryCard("Last 24 Hours") {
             val recentOz = recentFeeds.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }
             StatRow("Recent Volume", "%.1f oz / %d ml".format(recentOz, (recentOz * 30).toInt()))
@@ -366,7 +390,6 @@ fun TrendsScreen() {
         }
         Spacer(modifier = Modifier.height(16.dp))
 
-        // RESTORED: Intervals Section
         StatCategoryCard("Intervals") {
             val sortedFeeds = feedingEvents.sortedBy { it.timestamp }
             if (sortedFeeds.size > 1) {
