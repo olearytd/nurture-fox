@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.toleary.babyclock.ui.theme.BabyClockTheme
@@ -63,9 +65,11 @@ class MainActivity : ComponentActivity() {
                 var selectedTab by remember { mutableIntStateOf(0) }
                 val tabs = listOf("Tracker", "Daily Log", "Trends")
 
-                // Feedback State
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+
+                val adaptiveInfo = currentWindowAdaptiveInfo()
+                val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == androidx.window.core.layout.WindowWidthSizeClass.EXPANDED
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize().safeDrawingPadding(),
@@ -84,31 +88,38 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
-                        when (selectedTab) {
-                            0 -> BabyClockScreen(
-                                onLogEvent = { value, unit, category, timestamp ->
-                                    lifecycleScope.launch {
-                                        val event = BabyEvent(
-                                            type = category,
-                                            subtype = unit,
-                                            amountMl = value.toFloatOrNull() ?: 0f,
-                                            timestamp = timestamp
-                                        )
-                                        BabyApplication.database.babyDao().insertEvent(event)
-                                        if (category == "FEED") startBabyTimer(value, timestamp)
-
-                                        // FEEDBACK: Snackbar pops up
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar(
-                                                message = "${category.lowercase().replaceFirstChar { it.uppercase() }} logged!",
-                                                duration = SnackbarDuration.Short
+                        if (isExpanded && selectedTab == 1) {
+                            Row(Modifier.fillMaxSize()) {
+                                Box(Modifier.weight(0.4f)) {
+                                    DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
+                                }
+                                VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                                Box(Modifier.weight(0.6f)) {
+                                    TrendsScreen()
+                                }
+                            }
+                        } else {
+                            when (selectedTab) {
+                                0 -> BabyClockScreen(
+                                    onLogEvent = { value, unit, category, timestamp ->
+                                        lifecycleScope.launch {
+                                            val event = BabyEvent(
+                                                type = category,
+                                                subtype = unit,
+                                                amountMl = value.toFloatOrNull() ?: 0f,
+                                                timestamp = timestamp
                                             )
+                                            BabyApplication.database.babyDao().insertEvent(event)
+                                            if (category == "FEED") startBabyTimer(value, timestamp)
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("${category.lowercase().replaceFirstChar { it.uppercase() }} logged!")
+                                            }
                                         }
                                     }
-                                }
-                            )
-                            1 -> DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
-                            2 -> TrendsScreen()
+                                )
+                                1 -> DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
+                                2 -> TrendsScreen()
+                            }
                         }
                     }
                 }
@@ -204,13 +215,13 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // PERSISTENCE FIX: Save/Load Goal
     val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
     var dailyGoalOz by remember { mutableFloatStateOf(prefs.getFloat("daily_goal", 32f)) }
 
     var showGoalDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
 
+    // Logic for Daily Summary (Today only)
     val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
     val todayEvents = events.filter { it.timestamp >= todayStart }
 
@@ -218,6 +229,10 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val rawMl = todayEvents.filter { it.type == "FEED" && it.subtype == "ml" }.sumOf { it.amountMl.toDouble() }
     val combinedTotalOz = ((rawOz * 30.0 + rawMl) / 30.0).toFloat()
     val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
+
+    // Performance Optimization: Limit Detailed Log to last 3 days
+    val threeDaysAgo = todayStart - (2 * 24 * 60 * 60 * 1000L)
+    val recentEvents = events.filter { it.timestamp >= threeDaysAgo }
 
     if (editingEvent != null) {
         EditEventDialog(event = editingEvent!!, onDismiss = { editingEvent = null }, onConfirm = { newAmount, newUnit, newTimestamp ->
@@ -254,16 +269,66 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
             }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+        Text(text = "Recent History (3 Days)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            val groupedEvents = events.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
+            val groupedEvents = recentEvents.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
             groupedEvents.forEach { (date, eventsInDay) ->
                 item {
                     Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 }
                 items(items = eventsInDay, key = { it.id }) { event ->
-                    val dismissState = rememberSwipeToDismissBoxState(confirmValueChange = { if (it == SwipeToDismissBoxValue.EndToStart) { scope.launch { if (event == events.firstOrNull()) onDeleteLatest(); BabyApplication.database.babyDao().deleteEvent(event) }; true } else false })
-                    SwipeToDismissBox(state = dismissState, enableDismissFromStartToEnd = false, backgroundContent = { Box(Modifier.fillMaxSize().background(if (dismissState.dismissDirection == SwipeToDismissBoxValue.EndToStart) MaterialTheme.colorScheme.errorContainer else Color.Transparent).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) { Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error) } }) {
+                    var showDeleteDialog by remember { mutableStateOf(false) }
+
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = {
+                            if (it == SwipeToDismissBoxValue.EndToStart) {
+                                showDeleteDialog = true
+                                false // Don't dismiss immediately
+                            } else false
+                        }
+                    )
+
+                    // DELETE CONFIRMATION DIALOG
+                    if (showDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = {
+                                showDeleteDialog = false
+                                scope.launch { dismissState.reset() }
+                            },
+                            title = { Text("Delete Log?") },
+                            text = { Text("Are you sure you want to delete this entry? This cannot be undone.") },
+                            confirmButton = {
+                                Button(onClick = {
+                                    scope.launch {
+                                        if (event == events.firstOrNull()) onDeleteLatest()
+                                        BabyApplication.database.babyDao().deleteEvent(event)
+                                        showDeleteDialog = false
+                                    }
+                                }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) {
+                                    Text("Delete")
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = {
+                                    showDeleteDialog = false
+                                    scope.launch { dismissState.reset() }
+                                }) { Text("Cancel") }
+                            }
+                        )
+                    }
+
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
+                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    ) {
                         Box(modifier = Modifier.padding(vertical = 4.dp).clickable { editingEvent = event }) { FeedingCard(event) }
                     }
                 }
@@ -317,37 +382,52 @@ fun SummaryStat(label: String, value: String) {
 @Composable
 fun TrendsScreen() {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
-    val now = System.currentTimeMillis(); val twentyFourHoursAgo = now - (24 * 60 * 60 * 1000L); val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
+
+    val calendar = Calendar.getInstance()
+    val now = calendar.timeInMillis
+
+    // YESTERDAY VS TODAY POINT-IN-TIME COMPARISON
+    calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0)
+    val startOfToday = calendar.timeInMillis
+    val timeElapsedToday = now - startOfToday
+
+    val startOfYesterday = startOfToday - (24 * 60 * 60 * 1000L)
+    val endOfYesterdayPeriod = startOfYesterday + timeElapsedToday
+
+    val todayEvents = events.filter { it.timestamp in startOfToday..now }
+    val yesterdayPeriodEvents = events.filter { it.timestamp in startOfYesterday..endOfYesterdayPeriod }
+
+    val todayVol = todayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+    val yesterdayVol = yesterdayPeriodEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
 
     val feedingEvents = events.filter { it.type == "FEED" }
-    val recentFeeds = feedingEvents.filter { it.timestamp >= twentyFourHoursAgo }
+    val diaperEvents = events.filter { it.type == "DIAPER" }
     val dayCount = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }.size.coerceAtLeast(1)
     val totalOz = feedingEvents.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() } / 30.0
-    val avgOzPerDay = (totalOz / dayCount).toFloat()
 
+    // CHART PRODUCERS
+    val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
     val modelProducer24h = remember { CartesianChartModelProducer.build() }
-    LaunchedEffect(recentFeeds) {
+    val modelProducer7d = remember { CartesianChartModelProducer.build() }
+
+    LaunchedEffect(events) {
         modelProducer24h.tryRunTransaction {
             columnSeries {
                 val entryList = mutableListOf<Float>()
+                val startOfLast24h = now - (24 * 60 * 60 * 1000L)
                 for (i in 0..7) {
-                    val start = twentyFourHoursAgo + (i * 3 * 60 * 60 * 1000L); val end = start + (3 * 60 * 60 * 1000L)
-                    entryList.add(recentFeeds.filter { it.timestamp in start until end }.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }.toFloat())
+                    val s = startOfLast24h + (i * 3 * 60 * 60 * 1000L); val e = s + (3 * 60 * 60 * 1000L)
+                    entryList.add(feedingEvents.filter { it.timestamp in s until e }.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }.toFloat())
                 }
                 series(entryList)
             }
         }
-    }
-
-    val weeklyFeeds = feedingEvents.filter { it.timestamp >= sevenDaysAgo }
-    val modelProducer7d = remember { CartesianChartModelProducer.build() }
-    LaunchedEffect(weeklyFeeds) {
         modelProducer7d.tryRunTransaction {
             columnSeries {
                 val dailyTotals = mutableListOf<Float>()
                 for (i in 0..6) {
                     val dayStart = sevenDaysAgo + (i * 24 * 60 * 60 * 1000L); val dayEnd = dayStart + (24 * 60 * 60 * 1000L)
-                    dailyTotals.add(weeklyFeeds.filter { it.timestamp in dayStart until dayEnd }.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }.toFloat())
+                    dailyTotals.add(feedingEvents.filter { it.timestamp in dayStart until dayEnd }.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }.toFloat())
                 }
                 series(dailyTotals)
             }
@@ -358,38 +438,62 @@ fun TrendsScreen() {
         Text("Trends & Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(16.dp))
 
+        // PREVIOUS DAY COMPARISON (Point-in-Time)
+        StatCategoryCard("Previous Day Comparison") {
+            Text("Today vs Yesterday (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
+            Spacer(Modifier.height(8.dp))
+            StatRow("Vol Today", "%.1f oz".format(todayVol))
+            StatRow("Vol Yesterday", "%.1f oz".format(yesterdayVol))
+
+            val volDiff = todayVol - yesterdayVol
+            Text(
+                text = if (volDiff >= 0) "+%.1f oz vs yesterday".format(volDiff) else "%.1f oz vs yesterday".format(volDiff),
+                color = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold
+            )
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            StatRow("Diapers Today", "${todayEvents.count { it.type == "DIAPER" }}")
+            StatRow("Diapers Yesterday", "${yesterdayPeriodEvents.count { it.type == "DIAPER" }}")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Volume (oz) - Last 24h", modelProducer24h)
         Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
         Spacer(modifier = Modifier.height(16.dp))
 
-        StatCategoryCard("Last 24 Hours") {
-            val recentOz = recentFeeds.sumOf { if (it.subtype == "oz") it.amountMl.toDouble() else (it.amountMl / 30.0) }
-            StatRow("Recent Volume", "%.1f oz / %d ml".format(recentOz, (recentOz * 30).toInt()))
-            val diff = recentOz - avgOzPerDay
-            val diffColor = if (diff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
-            Text(
-                text = if (diff >= 0) "+%.1f oz vs daily average".format(diff) else "%.1f oz vs daily average".format(diff),
-                style = MaterialTheme.typography.labelSmall, color = diffColor
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        // HISTORICAL SUMMARY
+        StatCategoryCard("Historical Summary") {
+            val last7d = now - (7 * 24 * 60 * 60 * 1000L)
+            val last14d = now - (14 * 24 * 60 * 60 * 1000L)
+            val last30d = now - (30 * 24 * 60 * 60 * 1000L)
 
+            fun getVol(since: Long) = feedingEvents.filter { it.timestamp >= since }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+
+            StatRow("Last 7 Days Total", "%.0f oz".format(getVol(last7d)))
+            StatRow("Last 14 Days Total", "%.0f oz".format(getVol(last14d)))
+            StatRow("Last 30 Days Total", "%.0f oz".format(getVol(last30d)))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
         StatCategoryCard("Feeding Patterns") {
             StatRow("Daily Average", "%.1f oz".format(totalOz / dayCount))
             StatRow("Bottles per Day", "%.1f".format(feedingEvents.size.toFloat() / dayCount))
             StatRow("Avg. per Bottle", "%.1f oz".format(if(feedingEvents.isNotEmpty()) totalOz/feedingEvents.size else 0.0))
         }
+
         Spacer(modifier = Modifier.height(16.dp))
 
+        // RESTORED: Diaper History Section
         StatCategoryCard("Diaper History") {
-            StatRow("Total Changes", "${events.count { it.type == "DIAPER" }}")
-            StatRow("Daily Average", "%.1f".format(events.count { it.type == "DIAPER" }.toFloat() / dayCount))
-            StatRow("Total Pees", "${events.count { it.subtype == "Pee" || it.subtype == "Both" }}")
-            StatRow("Total Poops", "${events.count { it.subtype == "Poop" || it.subtype == "Both" }}")
+            StatRow("Total Changes", "${diaperEvents.size}")
+            StatRow("Daily Average", "%.1f".format(diaperEvents.size.toFloat() / dayCount))
+            StatRow("Total Pees", "${diaperEvents.count { it.subtype == "Pee" || it.subtype == "Both" }}")
+            StatRow("Total Poops", "${diaperEvents.count { it.subtype == "Poop" || it.subtype == "Both" }}")
         }
-        Spacer(modifier = Modifier.height(16.dp))
 
+        Spacer(modifier = Modifier.height(16.dp))
         StatCategoryCard("Intervals") {
             val sortedFeeds = feedingEvents.sortedBy { it.timestamp }
             if (sortedFeeds.size > 1) {

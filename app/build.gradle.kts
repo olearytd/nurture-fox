@@ -15,8 +15,8 @@ android {
         applicationId = "com.toleary.babyclock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +55,8 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.0")
     implementation("androidx.glance:glance:1.1.0")
     implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.22")
+    implementation("androidx.compose.material3.adaptive:adaptive:1.0.0")
+    implementation("androidx.compose.material3:material3-window-size-class")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
