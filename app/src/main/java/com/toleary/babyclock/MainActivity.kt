@@ -27,7 +27,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -214,6 +216,7 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
     var dailyGoalOz by remember { mutableFloatStateOf(prefs.getFloat("daily_goal", 32f)) }
@@ -221,7 +224,6 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     var showGoalDialog by remember { mutableStateOf(false) }
     var editingEvent by remember { mutableStateOf<BabyEvent?>(null) }
 
-    // Logic for Daily Summary (Today only)
     val todayStart = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0) }.timeInMillis
     val todayEvents = events.filter { it.timestamp >= todayStart }
 
@@ -230,7 +232,6 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val combinedTotalOz = ((rawOz * 30.0 + rawMl) / 30.0).toFloat()
     val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
 
-    // Performance Optimization: Limit Detailed Log to last 3 days
     val threeDaysAgo = todayStart - (2 * 24 * 60 * 60 * 1000L)
     val recentEvents = events.filter { it.timestamp >= threeDaysAgo }
 
@@ -285,13 +286,13 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                     val dismissState = rememberSwipeToDismissBoxState(
                         confirmValueChange = {
                             if (it == SwipeToDismissBoxValue.EndToStart) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 showDeleteDialog = true
-                                false // Don't dismiss immediately
+                                false
                             } else false
                         }
                     )
 
-                    // DELETE CONFIRMATION DIALOG
                     if (showDeleteDialog) {
                         AlertDialog(
                             onDismissRequest = {
@@ -324,8 +325,13 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                         state = dismissState,
                         enableDismissFromStartToEnd = false,
                         backgroundContent = {
-                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
-                                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                            val isSwiping = dismissState.targetValue == SwipeToDismissBoxValue.EndToStart
+                            val backgroundColor = if (isSwiping) MaterialTheme.colorScheme.errorContainer else Color.Transparent
+
+                            Box(Modifier.fillMaxSize().background(backgroundColor).padding(horizontal = 20.dp), contentAlignment = Alignment.CenterEnd) {
+                                if (isSwiping) {
+                                    Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
                             }
                         }
                     ) {
@@ -386,7 +392,6 @@ fun TrendsScreen() {
     val calendar = Calendar.getInstance()
     val now = calendar.timeInMillis
 
-    // YESTERDAY VS TODAY POINT-IN-TIME COMPARISON
     calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0)
     val startOfToday = calendar.timeInMillis
     val timeElapsedToday = now - startOfToday
@@ -405,7 +410,6 @@ fun TrendsScreen() {
     val dayCount = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }.size.coerceAtLeast(1)
     val totalOz = feedingEvents.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() } / 30.0
 
-    // CHART PRODUCERS
     val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
     val modelProducer24h = remember { CartesianChartModelProducer.build() }
     val modelProducer7d = remember { CartesianChartModelProducer.build() }
@@ -438,7 +442,6 @@ fun TrendsScreen() {
         Text("Trends & Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // PREVIOUS DAY COMPARISON (Point-in-Time)
         StatCategoryCard("Previous Day Comparison") {
             Text("Today vs Yesterday (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
@@ -463,7 +466,6 @@ fun TrendsScreen() {
         ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // HISTORICAL SUMMARY
         StatCategoryCard("Historical Summary") {
             val last7d = now - (7 * 24 * 60 * 60 * 1000L)
             val last14d = now - (14 * 24 * 60 * 60 * 1000L)
@@ -485,7 +487,6 @@ fun TrendsScreen() {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // RESTORED: Diaper History Section
         StatCategoryCard("Diaper History") {
             StatRow("Total Changes", "${diaperEvents.size}")
             StatRow("Daily Average", "%.1f".format(diaperEvents.size.toFloat() / dayCount))
