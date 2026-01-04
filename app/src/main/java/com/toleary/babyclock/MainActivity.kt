@@ -48,6 +48,9 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
+// NEW: Imports for Wearable Data Layer
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -75,7 +78,6 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
 
-                // Persistent Child Profile State
                 var showSettings by remember { mutableStateOf(false) }
                 var babyName by remember { mutableStateOf(prefs.getString("baby_name", "Nurture Fox") ?: "Nurture Fox") }
                 var babyBirthDate by remember { mutableLongStateOf(prefs.getLong("baby_birthday", 0L)) }
@@ -147,7 +149,13 @@ class MainActivity : ComponentActivity() {
                                                 timestamp = timestamp
                                             )
                                             BabyApplication.database.babyDao().insertEvent(event)
-                                            if (category == "FEED") startBabyTimer(value, timestamp)
+
+                                            if (category == "FEED") {
+                                                startBabyTimer(value, timestamp)
+                                                // NEW: Sync the feeding timestamp to the watch
+                                                syncLastFeedToWatch(context, timestamp)
+                                            }
+
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("${category.lowercase().replaceFirstChar { it.uppercase() }} logged!")
                                             }
@@ -163,6 +171,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // NEW: Helper to push data to the Wear OS Data Layer
+    private fun syncLastFeedToWatch(context: Context, timestamp: Long) {
+        val dataClient = Wearable.getDataClient(context)
+        val putDataReq = PutDataMapRequest.create("/last_feed").apply {
+            dataMap.putLong("timestamp", timestamp)
+        }.asPutDataRequest().setUrgent()
+
+        dataClient.putDataItem(putDataReq)
     }
 
     private fun startBabyTimer(amount: String, startTime: Long) {
