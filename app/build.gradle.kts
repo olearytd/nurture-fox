@@ -65,12 +65,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    implementation("com.google.android.gms:play-services-wearable:18.1.0")
+
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
 
-    // 2. Add this specific SQLite implementation that SQLCipher needs to talk to Room
     implementation("androidx.sqlite:sqlite:2.4.0")
     implementation("net.zetetic:sqlcipher-android:4.5.4@aar")
 }

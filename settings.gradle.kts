@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "BabyClock"
 include(":app")
- 
+include(":nurturefox-watch")

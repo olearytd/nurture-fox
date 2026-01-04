@@ -53,5 +53,12 @@
                 android:resource="@xml/action_widget_info" />
         </receiver>
 
+        <service android:name=".WatchLifecycleService" android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/log_feed" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>
