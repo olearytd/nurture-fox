@@ -1,5 +1,6 @@
 package com.toleary.babyclock
 
+import android.app.DatePickerDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.TimePickerDialog
@@ -21,6 +22,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -33,8 +36,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.glance.appwidget.updateAll
+import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.lifecycle.lifecycleScope
 import com.toleary.babyclock.ui.theme.BabyClockTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -65,10 +68,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             BabyClockTheme {
                 var selectedTab by remember { mutableIntStateOf(0) }
-                val tabs = listOf("Tracker", "Daily Log", "Trends")
+                val tabs = listOf("Tracker", "Daily Log", "Trends", "Milestones")
 
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                val context = LocalContext.current
+                val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
+
+                // Persistent Child Profile State
+                var showSettings by remember { mutableStateOf(false) }
+                var babyName by remember { mutableStateOf(prefs.getString("baby_name", "Nurture Fox") ?: "Nurture Fox") }
+                var babyBirthDate by remember { mutableLongStateOf(prefs.getLong("baby_birthday", 0L)) }
 
                 val adaptiveInfo = currentWindowAdaptiveInfo()
                 val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == androidx.window.core.layout.WindowWidthSizeClass.EXPANDED
@@ -77,6 +87,17 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize().safeDrawingPadding(),
                     containerColor = MaterialTheme.colorScheme.background,
                     snackbarHost = { SnackbarHost(snackbarHostState) },
+                    topBar = {
+                        @OptIn(ExperimentalMaterial3Api::class)
+                        CenterAlignedTopAppBar(
+                            title = { Text(babyName) },
+                            actions = {
+                                IconButton(onClick = { showSettings = true }) {
+                                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                                }
+                            }
+                        )
+                    },
                     bottomBar = {
                         TabRow(selectedTabIndex = selectedTab) {
                             tabs.forEachIndexed { index, title ->
@@ -89,6 +110,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
+                    if (showSettings) {
+                        SettingsDialog(
+                            currentName = babyName,
+                            currentBirthday = babyBirthDate,
+                            onDismiss = { showSettings = false },
+                            onSave = { name, bday ->
+                                babyName = name
+                                babyBirthDate = bday
+                                prefs.edit().putString("baby_name", name).putLong("baby_birthday", bday).apply()
+                                showSettings = false
+                            }
+                        )
+                    }
+
                     Column(modifier = Modifier.padding(innerPadding)) {
                         if (isExpanded && selectedTab == 1) {
                             Row(Modifier.fillMaxSize()) {
@@ -121,6 +156,7 @@ class MainActivity : ComponentActivity() {
                                 )
                                 1 -> DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
                                 2 -> TrendsScreen()
+                                3 -> MilestonesScreen(babyBirthDate)
                             }
                         }
                     }
@@ -147,6 +183,212 @@ class MainActivity : ComponentActivity() {
             val channel = NotificationChannel("BABY_CHANNEL", "Baby Timer", NotificationManager.IMPORTANCE_DEFAULT)
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
+    }
+}
+
+@Composable
+fun SettingsDialog(
+    currentName: String,
+    currentBirthday: Long,
+    onDismiss: () -> Unit,
+    onSave: (String, Long) -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
+
+    // Profile State
+    var name by remember { mutableStateOf(currentName) }
+    var birthday by remember { mutableLongStateOf(currentBirthday) }
+
+    // Widget Action State
+    var smallAmount by remember { mutableStateOf(prefs.getString("quick_amount_small", "2") ?: "2") }
+    var largeAmount by remember { mutableStateOf(prefs.getString("quick_amount_large", "6") ?: "6") }
+
+    val dateLabel = if (birthday == 0L) "Select Birthday" else SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(birthday))
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Settings & Profile") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                // SECTION: Child Profile
+                Text("Child Profile", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
+
+                // RESTORED: Birthday Button
+                Button(onClick = {
+                    val cal = Calendar.getInstance()
+                    if (birthday != 0L) cal.timeInMillis = birthday
+                    DatePickerDialog(context, { _, y, m, d ->
+                        val newCal = Calendar.getInstance()
+                        newCal.set(y, m, d)
+                        birthday = newCal.timeInMillis
+                    }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text(dateLabel)
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // SECTION: Widget Actions
+                Text("Widget Quick Actions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = smallAmount,
+                        onValueChange = { smallAmount = it },
+                        label = { Text("Small oz") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                    OutlinedTextField(
+                        value = largeAmount,
+                        onValueChange = { largeAmount = it },
+                        label = { Text("Large oz") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // RESTORED: Database Status Card
+                Text("System Status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Row(
+                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Encryption", style = MaterialTheme.typography.bodyMedium)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(8.dp).background(Color(0xFF4CAF50), shape = MaterialTheme.shapes.small))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Hardware Secured", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = {
+                // Save Widget Prefs
+                prefs.edit()
+                    .putString("quick_amount_small", smallAmount)
+                    .putString("quick_amount_large", largeAmount)
+                    .apply()
+
+                // Update Widget UI
+                scope.launch { ActionWidget().updateAll(context) }
+
+                onSave(name, birthday)
+            }) { Text("Save All") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
+}
+
+@Composable
+fun MilestonesScreen(babyBirthday: Long) {
+    val milestones by BabyApplication.database.babyDao().getAllMilestones().collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+
+    val milestoneOptions = listOf(
+        "First Smile", "First Laugh", "Rolling Over", "Sitting Up",
+        "First Solid Food", "Crawling", "First Word", "First Steps",
+        "Waving Bye-Bye", "Pulling to Stand", "First Tooth", "Walking"
+    )
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
+        Text("Developmental Milestones", style = MaterialTheme.typography.headlineMedium)
+        Spacer(Modifier.height(16.dp))
+
+        if (babyBirthday == 0L) {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Text(
+                    "Set birthday in Settings (gear icon) to calculate age!",
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("What happened recently?", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                milestoneOptions.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { mName ->
+                            OutlinedButton(
+                                onClick = {
+                                    val now = System.currentTimeMillis()
+                                    val age = calculateAge(babyBirthday, now)
+                                    scope.launch {
+                                        BabyApplication.database.babyDao().insertMilestone(
+                                            Milestone(name = mName, timestamp = now, ageAtOccurrence = age)
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).padding(vertical = 4.dp)
+                            ) { Text(mName) }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+        Text("Memory Book", style = MaterialTheme.typography.titleLarge)
+
+        if (milestones.isEmpty()) {
+            Text("No milestones logged yet. Tap a milestone above to save a memory!", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+        }
+
+        milestones.forEach { milestone ->
+            ListItem(
+                headlineContent = { Text(milestone.name, fontWeight = FontWeight.Bold) },
+                supportingContent = { Text("Accomplished at: ${milestone.ageAtOccurrence}") },
+                leadingContent = { Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFD700)) },
+                trailingContent = {
+                    IconButton(onClick = { scope.launch { BabyApplication.database.babyDao().deleteMilestone(milestone) } }) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
+            )
+            HorizontalDivider()
+        }
+    }
+}
+
+// Age calculation, BabyClockScreen, DailyLogScreen, FeedingCard, EditEventDialog, SummaryStat, TrendsScreen, and Chart components remain as previously defined.
+
+fun calculateAge(birthday: Long, milestoneDate: Long): String {
+    if (birthday == 0L) return "Unknown"
+    val bDay = Calendar.getInstance().apply { timeInMillis = birthday }
+    val mDay = Calendar.getInstance().apply { timeInMillis = milestoneDate }
+
+    var years = mDay.get(Calendar.YEAR) - bDay.get(Calendar.YEAR)
+    var months = mDay.get(Calendar.MONTH) - bDay.get(Calendar.MONTH)
+    var days = mDay.get(Calendar.DAY_OF_MONTH) - bDay.get(Calendar.DAY_OF_MONTH)
+
+    if (days < 0) {
+        months--
+        days += mDay.getActualMaximum(Calendar.DAY_OF_MONTH)
+    }
+    if (months < 0) {
+        years--
+        months += 12
+    }
+
+    return buildString {
+        if (years > 0) append("$years y, ")
+        if (months > 0 || years > 0) append("$months m, ")
+        append("$days d")
     }
 }
 

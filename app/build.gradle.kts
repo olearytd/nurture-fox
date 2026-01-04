@@ -15,8 +15,8 @@ android {
         applicationId = "com.toleary.babyclock"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.5"
+        versionCode = 8
+        versionName = "2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -65,8 +65,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    val roomVersion = "2.8.4"
+    val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
     ksp("androidx.room:room-compiler:$roomVersion")
+
+    // 2. Add this specific SQLite implementation that SQLCipher needs to talk to Room
+    implementation("androidx.sqlite:sqlite:2.4.0")
+    implementation("net.zetetic:sqlcipher-android:4.5.4@aar")
 }
