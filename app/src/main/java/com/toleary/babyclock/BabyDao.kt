@@ -22,4 +22,13 @@ interface BabyDao {
 
     @Query("SELECT * FROM events_table WHERE type = 'FEED' ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestFeedSync(): BabyEvent?
+
+    @Query("SELECT * FROM milestones ORDER BY timestamp DESC")
+    fun getAllMilestones(): kotlinx.coroutines.flow.Flow<List<Milestone>>
+
+    @Insert
+    suspend fun insertMilestone(milestone: Milestone)
+
+    @Delete
+    suspend fun deleteMilestone(milestone: Milestone)
 }

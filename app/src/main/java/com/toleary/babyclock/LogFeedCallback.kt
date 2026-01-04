@@ -18,7 +18,7 @@ class LogFeedCallback : ActionCallback {
         parameters: ActionParameters
     ) {
         // 1. Get the amount passed from the widget button
-        val amount = parameters[AmountKey] ?: "4"
+        val amount = parameters[AmountSmallKey] ?: parameters[AmountLargeKey] ?: "4"
 
         // 2. Perform background work
         CoroutineScope(Dispatchers.IO).launch {
