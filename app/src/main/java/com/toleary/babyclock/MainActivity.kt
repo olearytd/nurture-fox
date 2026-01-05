@@ -48,6 +48,9 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
+// NEW: Imports for Wearable Data Layer
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -75,13 +78,12 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
 
-                // Persistent Child Profile State
                 var showSettings by remember { mutableStateOf(false) }
                 var babyName by remember { mutableStateOf(prefs.getString("baby_name", "Nurture Fox") ?: "Nurture Fox") }
                 var babyBirthDate by remember { mutableLongStateOf(prefs.getLong("baby_birthday", 0L)) }
 
                 val adaptiveInfo = currentWindowAdaptiveInfo()
-                val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == androidx.window.core.layout.WindowWidthSizeClass.EXPANDED
+                val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize().safeDrawingPadding(),
@@ -147,7 +149,13 @@ class MainActivity : ComponentActivity() {
                                                 timestamp = timestamp
                                             )
                                             BabyApplication.database.babyDao().insertEvent(event)
-                                            if (category == "FEED") startBabyTimer(value, timestamp)
+
+                                            if (category == "FEED") {
+                                                startBabyTimer(value, timestamp)
+                                                // NEW: Sync the feeding timestamp to the watch
+                                                syncLastFeedToWatch(context, timestamp)
+                                            }
+
                                             scope.launch {
                                                 snackbarHostState.showSnackbar("${category.lowercase().replaceFirstChar { it.uppercase() }} logged!")
                                             }
@@ -163,6 +171,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // NEW: Helper to push data to the Wear OS Data Layer
+    private fun syncLastFeedToWatch(context: Context, timestamp: Long) {
+        val dataClient = Wearable.getDataClient(context)
+        val putDataReq = PutDataMapRequest.create("/last_feed").apply {
+            dataMap.putLong("timestamp", timestamp)
+        }.asPutDataRequest().setUrgent()
+
+        dataClient.putDataItem(putDataReq)
     }
 
     private fun startBabyTimer(amount: String, startTime: Long) {
@@ -197,11 +215,9 @@ fun SettingsDialog(
     val scope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
 
-    // Profile State
     var name by remember { mutableStateOf(currentName) }
     var birthday by remember { mutableLongStateOf(currentBirthday) }
 
-    // Widget Action State
     var smallAmount by remember { mutableStateOf(prefs.getString("quick_amount_small", "2") ?: "2") }
     var largeAmount by remember { mutableStateOf(prefs.getString("quick_amount_large", "6") ?: "6") }
 
@@ -215,11 +231,9 @@ fun SettingsDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.verticalScroll(rememberScrollState())
             ) {
-                // SECTION: Child Profile
                 Text("Child Profile", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, modifier = Modifier.fillMaxWidth())
 
-                // RESTORED: Birthday Button
                 Button(onClick = {
                     val cal = Calendar.getInstance()
                     if (birthday != 0L) cal.timeInMillis = birthday
@@ -234,7 +248,6 @@ fun SettingsDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                // SECTION: Widget Actions
                 Text("Widget Quick Actions", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -255,7 +268,6 @@ fun SettingsDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                // RESTORED: Database Status Card
                 Text("System Status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Row(
@@ -275,15 +287,12 @@ fun SettingsDialog(
         },
         confirmButton = {
             Button(onClick = {
-                // Save Widget Prefs
                 prefs.edit()
                     .putString("quick_amount_small", smallAmount)
                     .putString("quick_amount_large", largeAmount)
                     .apply()
 
-                // Update Widget UI
                 scope.launch { ActionWidget().updateAll(context) }
-
                 onSave(name, birthday)
             }) { Text("Save All") }
         },
@@ -364,8 +373,6 @@ fun MilestonesScreen(babyBirthday: Long) {
         }
     }
 }
-
-// Age calculation, BabyClockScreen, DailyLogScreen, FeedingCard, EditEventDialog, SummaryStat, TrendsScreen, and Chart components remain as previously defined.
 
 fun calculateAge(birthday: Long, milestoneDate: Long): String {
     if (birthday == 0L) return "Unknown"
@@ -522,7 +529,7 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
                     Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
                     HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
                 }
-                items(items = eventsInDay, key = { it.id }) { event ->
+                items(items = eventsInDay, key = { "${it.id}_${it.type}" }) { event ->
                     var showDeleteDialog by remember { mutableStateOf(false) }
 
                     val dismissState = rememberSwipeToDismissBoxState(
