@@ -36,4 +36,4 @@ google-services.json
 .DS_Store
 
 # Garmin Connect IQ
-developer_key
+garmin-module/developer_key
