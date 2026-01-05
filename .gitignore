@@ -34,3 +34,6 @@ google-services.json
 *.hprof
 
 .DS_Store
+
+# Garmin Connect IQ
+developer_key
