@@ -35,7 +35,7 @@ fun formatElapsedTime(lastFeedMs: Long): TimeDisplay {
     val hours = totalMinutes / 60
     val minutes = totalMinutes % 60
 
-    // RED warning if >= 3 hours
+    // RED warning if >= 3 hours (180 minutes)
     val isOverdue = totalMinutes >= 180
 
     val text = when {
@@ -167,7 +167,6 @@ fun WearApp(
                                 text = display.text,
                                 style = MaterialTheme.typography.title1,
                                 fontWeight = FontWeight.Bold,
-                                // Color changes to Red when overdue
                                 color = if (display.isOverdue) Color.Red else MaterialTheme.colors.primary
                             )
                         }
@@ -198,15 +197,24 @@ fun WearApp(
                             increaseIcon = { Icon(StepperDefaults.Increase, "More") },
                             decreaseIcon = { Icon(StepperDefaults.Decrease, "Less") }
                         ) {
-                            Chip(
-                                onClick = {
-                                    onLog("feed", selectedOz.toString())
-                                    activeMenu = "SUCCESS"
-                                },
-                                label = { Text("Confirm $selectedOz oz") },
-                                colors = ChipDefaults.primaryChipColors(),
-                                modifier = Modifier.width(110.dp)
-                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Chip(
+                                    onClick = {
+                                        onLog("feed", selectedOz.toString())
+                                        activeMenu = "SUCCESS"
+                                    },
+                                    label = { Text("Confirm $selectedOz oz") },
+                                    colors = ChipDefaults.primaryChipColors(),
+                                    modifier = Modifier.width(100.dp)
+                                )
+                                Button(
+                                    onClick = { activeMenu = "MAIN" },
+                                    colors = ButtonDefaults.secondaryButtonColors(), // Subtle gray style
+                                    modifier = Modifier.size(ButtonDefaults.SmallButtonSize)
+                                ) {
+                                    Text("Back", fontSize = 10.sp)
+                                }
+                            }
                         }
                     }
                 }
@@ -228,6 +236,14 @@ fun WearApp(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
+                        }
+                        // Added Cancel Button at bottom of list
+                        item {
+                            CompactChip(
+                                onClick = { activeMenu = "MAIN" },
+                                label = { Text("Cancel") },
+                                colors = ChipDefaults.secondaryChipColors()
+                            )
                         }
                     }
                 }

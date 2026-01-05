@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId = "com.toleary.babyclock"
-        minSdk = 30
-        targetSdk = 36
-        versionCode = 9
-        versionName = "2.2"
+        minSdk = 26
+        targetSdk = 35
+        versionCode = 10016
+        versionName = "2.3"
     }
 
     buildTypes {
