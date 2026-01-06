@@ -39,6 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.updateAll
 import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.lifecycle.lifecycleScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.toleary.babyclock.ui.theme.BabyClockTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
 import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
@@ -48,12 +51,12 @@ import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
 import com.patrykandpatrick.vico.core.cartesian.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
-// NEW: Imports for Wearable Data Layer
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +70,13 @@ class MainActivity : ComponentActivity() {
         }
 
         createNotificationChannel()
+
+        val widgetRequest = PeriodicWorkRequestBuilder<WidgetWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "widget_heartbeat",
+            ExistingPeriodicWorkPolicy.KEEP, // KEEP means it won't reset the timer if it's already running
+            widgetRequest
+        )
 
         setContent {
             BabyClockTheme {
@@ -152,8 +162,9 @@ class MainActivity : ComponentActivity() {
 
                                             if (category == "FEED") {
                                                 startBabyTimer(value, timestamp)
-                                                // NEW: Sync the feeding timestamp to the watch
                                                 syncLastFeedToWatch(context, timestamp)
+
+                                                TimerWidget().updateAll(context)
                                             }
 
                                             scope.launch {
@@ -641,24 +652,45 @@ fun TrendsScreen() {
     val calendar = Calendar.getInstance()
     val now = calendar.timeInMillis
 
-    calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0)
+    // 1. Calculate time elapsed since midnight today
+    calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0); calendar.set(Calendar.MILLISECOND, 0)
     val startOfToday = calendar.timeInMillis
     val timeElapsedToday = now - startOfToday
 
-    val startOfYesterday = startOfToday - (24 * 60 * 60 * 1000L)
-    val endOfYesterdayPeriod = startOfYesterday + timeElapsedToday
-
+    // 2. Today's Totals
     val todayEvents = events.filter { it.timestamp in startOfToday..now }
-    val yesterdayPeriodEvents = events.filter { it.timestamp in startOfYesterday..endOfYesterdayPeriod }
-
     val todayVol = todayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
-    val yesterdayVol = yesterdayPeriodEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+    val todayDiapers = todayEvents.count { it.type == "DIAPER" }
 
+    // 3. UPDATED: Calculate Smart 7-Day Baseline
+    var totalBaselineVol = 0.0
+    var totalBaselineDiapers = 0
+    var activeDaysCount = 0 // Track days that actually have logs to avoid 0.0 average
+
+    for (i in 1..7) {
+        val dayStart = startOfToday - (i * 24 * 60 * 60 * 1000L)
+        val dayEnd = dayStart + timeElapsedToday
+        val dayEvents = events.filter { it.timestamp in dayStart..dayEnd }
+
+        // Get total for the full day to check if the day is "active"
+        val fullDayEvents = events.filter { it.timestamp in dayStart..(dayStart + 24 * 60 * 60 * 1000L) }
+
+        if (fullDayEvents.isNotEmpty()) {
+            activeDaysCount++
+            totalBaselineVol += dayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+            totalBaselineDiapers += dayEvents.count { it.type == "DIAPER" }
+        }
+    }
+
+    // Divide only by days that have data
+    val avgBaselineVol = if (activeDaysCount > 0) totalBaselineVol / activeDaysCount else 0.0
+    val avgBaselineDiapers = if (activeDaysCount > 0) totalBaselineDiapers.toDouble() / activeDaysCount else 0.0
+
+    // Remaining logic for charts...
     val feedingEvents = events.filter { it.type == "FEED" }
     val diaperEvents = events.filter { it.type == "DIAPER" }
     val dayCount = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }.size.coerceAtLeast(1)
     val totalOz = feedingEvents.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() } / 30.0
-
     val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
     val modelProducer24h = remember { CartesianChartModelProducer.build() }
     val modelProducer7d = remember { CartesianChartModelProducer.build() }
@@ -691,29 +723,47 @@ fun TrendsScreen() {
         Text("Trends & Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(16.dp))
 
-        StatCategoryCard("Previous Day Comparison") {
-            Text("Today vs Yesterday (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
+        StatCategoryCard("7-Day Baseline Comparison") {
+            Text("Today vs. Weekly Avg so far (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
             StatRow("Vol Today", "%.1f oz".format(todayVol))
-            StatRow("Vol Yesterday", "%.1f oz".format(yesterdayVol))
+            StatRow("7-Day Avg", "%.1f oz".format(avgBaselineVol))
 
-            val volDiff = todayVol - yesterdayVol
+            val volDiff = todayVol - avgBaselineVol
+            val volColor = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
             Text(
-                text = if (volDiff >= 0) "+%.1f oz vs yesterday".format(volDiff) else "%.1f oz vs yesterday".format(volDiff),
-                color = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
+                text = "${if(volDiff >= 0) "+" else ""}${"%.1f".format(volDiff)} oz vs. baseline",
+                color = volColor,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold
             )
+
+            // Help text for testing period
+            if (activeDaysCount < 7) {
+                Text(
+                    "Note: Baseline based on $activeDaysCount days of data.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            StatRow("Diapers Today", "${todayEvents.count { it.type == "DIAPER" }}")
-            StatRow("Diapers Yesterday", "${yesterdayPeriodEvents.count { it.type == "DIAPER" }}")
+            StatRow("Diapers Today", "$todayDiapers")
+            StatRow("7-Day Avg", "%.1f".format(avgBaselineDiapers))
+
+            val diaperDiff = todayDiapers - avgBaselineDiapers
+            Text(
+                text = "${if(diaperDiff >= 0) "+" else ""}${"%.1f".format(diaperDiff)} diapers vs. baseline",
+                style = MaterialTheme.typography.labelSmall,
+                color = if (diaperDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Volume (oz) - Last 24h", modelProducer24h)
         Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
-        Spacer(modifier = Modifier.height(16.dp))
 
         StatCategoryCard("Historical Summary") {
             val last7d = now - (7 * 24 * 60 * 60 * 1000L)

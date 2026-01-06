@@ -12,8 +12,8 @@ android {
         applicationId = "com.toleary.babyclock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10016
-        versionName = "2.3"
+        versionCode = 10017
+        versionName = "2.4"
     }
 
     buildTypes {
