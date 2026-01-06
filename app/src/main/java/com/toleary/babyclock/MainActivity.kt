@@ -11,15 +11,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
@@ -74,7 +77,7 @@ class MainActivity : ComponentActivity() {
         val widgetRequest = PeriodicWorkRequestBuilder<WidgetWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "widget_heartbeat",
-            ExistingPeriodicWorkPolicy.KEEP, // KEEP means it won't reset the timer if it's already running
+            ExistingPeriodicWorkPolicy.KEEP,
             widgetRequest
         )
 
@@ -163,7 +166,6 @@ class MainActivity : ComponentActivity() {
                                             if (category == "FEED") {
                                                 startBabyTimer(value, timestamp)
                                                 syncLastFeedToWatch(context, timestamp)
-
                                                 TimerWidget().updateAll(context)
                                             }
 
@@ -184,13 +186,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // NEW: Helper to push data to the Wear OS Data Layer
     private fun syncLastFeedToWatch(context: Context, timestamp: Long) {
         val dataClient = Wearable.getDataClient(context)
         val putDataReq = PutDataMapRequest.create("/last_feed").apply {
             dataMap.putLong("timestamp", timestamp)
         }.asPutDataRequest().setUrgent()
-
         dataClient.putDataItem(putDataReq)
     }
 
@@ -470,7 +470,7 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
@@ -492,8 +492,11 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val combinedTotalOz = ((rawOz * 30.0 + rawMl) / 30.0).toFloat()
     val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
 
-    val threeDaysAgo = todayStart - (2 * 24 * 60 * 60 * 1000L)
-    val recentEvents = events.filter { it.timestamp >= threeDaysAgo }
+    // INCREASED HISTORY: Filter events for the last 14 days
+    val historyLimit = todayStart - (13 * 24 * 60 * 60 * 1000L)
+    val recentEvents = events.filter { it.timestamp >= historyLimit }
+
+    val listState = rememberLazyListState()
 
     if (editingEvent != null) {
         EditEventDialog(event = editingEvent!!, onDismiss = { editingEvent = null }, onConfirm = { newAmount, newUnit, newTimestamp ->
@@ -531,15 +534,48 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        Text(text = "Recent History (3 Days)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "History (Last 14 Days)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            // SUGGESTION: Jump to Date Picker
+            IconButton(onClick = {
+                val cal = Calendar.getInstance()
+                DatePickerDialog(context, { _, y, m, d ->
+                    val selected = Calendar.getInstance().apply { set(y, m, d) }
+                    val targetDate = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(selected.time)
+                    val grouped = recentEvents.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
+
+                    // Attempt to scroll to the selected date
+                    val index = grouped.keys.toList().indexOf(targetDate)
+                    if (index != -1) {
+                        scope.launch { listState.animateScrollToItem(index * 2) }
+                    }
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+            }) {
+                Icon(Icons.Default.DateRange, contentDescription = "Jump to date", tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
             val groupedEvents = recentEvents.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
             groupedEvents.forEach { (date, eventsInDay) ->
-                item {
-                    Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                // STICKY HEADER: Date stays pinned during scroll
+                stickyHeader {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Column {
+                            Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
                 }
+
                 items(items = eventsInDay, key = { "${it.id}_${it.type}" }) { event ->
                     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -648,33 +684,24 @@ fun SummaryStat(label: String, value: String) {
 @Composable
 fun TrendsScreen() {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
-
     val calendar = Calendar.getInstance()
     val now = calendar.timeInMillis
-
-    // 1. Calculate time elapsed since midnight today
     calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0); calendar.set(Calendar.MILLISECOND, 0)
     val startOfToday = calendar.timeInMillis
     val timeElapsedToday = now - startOfToday
-
-    // 2. Today's Totals
     val todayEvents = events.filter { it.timestamp in startOfToday..now }
     val todayVol = todayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
     val todayDiapers = todayEvents.count { it.type == "DIAPER" }
 
-    // 3. UPDATED: Calculate Smart 7-Day Baseline
     var totalBaselineVol = 0.0
     var totalBaselineDiapers = 0
-    var activeDaysCount = 0 // Track days that actually have logs to avoid 0.0 average
+    var activeDaysCount = 0
 
     for (i in 1..7) {
         val dayStart = startOfToday - (i * 24 * 60 * 60 * 1000L)
         val dayEnd = dayStart + timeElapsedToday
         val dayEvents = events.filter { it.timestamp in dayStart..dayEnd }
-
-        // Get total for the full day to check if the day is "active"
         val fullDayEvents = events.filter { it.timestamp in dayStart..(dayStart + 24 * 60 * 60 * 1000L) }
-
         if (fullDayEvents.isNotEmpty()) {
             activeDaysCount++
             totalBaselineVol += dayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
@@ -682,11 +709,9 @@ fun TrendsScreen() {
         }
     }
 
-    // Divide only by days that have data
     val avgBaselineVol = if (activeDaysCount > 0) totalBaselineVol / activeDaysCount else 0.0
     val avgBaselineDiapers = if (activeDaysCount > 0) totalBaselineDiapers.toDouble() / activeDaysCount else 0.0
 
-    // Remaining logic for charts...
     val feedingEvents = events.filter { it.type == "FEED" }
     val diaperEvents = events.filter { it.type == "DIAPER" }
     val dayCount = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }.size.coerceAtLeast(1)
@@ -728,36 +753,17 @@ fun TrendsScreen() {
             Spacer(Modifier.height(8.dp))
             StatRow("Vol Today", "%.1f oz".format(todayVol))
             StatRow("7-Day Avg", "%.1f oz".format(avgBaselineVol))
-
             val volDiff = todayVol - avgBaselineVol
             val volColor = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
-            Text(
-                text = "${if(volDiff >= 0) "+" else ""}${"%.1f".format(volDiff)} oz vs. baseline",
-                color = volColor,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            // Help text for testing period
+            Text(text = "${if(volDiff >= 0) "+" else ""}${"%.1f".format(volDiff)} oz vs. baseline", color = volColor, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             if (activeDaysCount < 7) {
-                Text(
-                    "Note: Baseline based on $activeDaysCount days of data.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+                Text("Note: Baseline based on $activeDaysCount days of data.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 4.dp))
             }
-
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             StatRow("Diapers Today", "$todayDiapers")
             StatRow("7-Day Avg", "%.1f".format(avgBaselineDiapers))
-
             val diaperDiff = todayDiapers - avgBaselineDiapers
-            Text(
-                text = "${if(diaperDiff >= 0) "+" else ""}${"%.1f".format(diaperDiff)} diapers vs. baseline",
-                style = MaterialTheme.typography.labelSmall,
-                color = if (diaperDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
-            )
+            Text(text = "${if(diaperDiff >= 0) "+" else ""}${"%.1f".format(diaperDiff)} diapers vs. baseline", style = MaterialTheme.typography.labelSmall, color = if (diaperDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -769,9 +775,7 @@ fun TrendsScreen() {
             val last7d = now - (7 * 24 * 60 * 60 * 1000L)
             val last14d = now - (14 * 24 * 60 * 60 * 1000L)
             val last30d = now - (30 * 24 * 60 * 60 * 1000L)
-
             fun getVol(since: Long) = feedingEvents.filter { it.timestamp >= since }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
-
             StatRow("Last 7 Days Total", "%.0f oz".format(getVol(last7d)))
             StatRow("Last 14 Days Total", "%.0f oz".format(getVol(last14d)))
             StatRow("Last 30 Days Total", "%.0f oz".format(getVol(last30d)))
@@ -785,7 +789,6 @@ fun TrendsScreen() {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
         StatCategoryCard("Diaper History") {
             StatRow("Total Changes", "${diaperEvents.size}")
             StatRow("Daily Average", "%.1f".format(diaperEvents.size.toFloat() / dayCount))
