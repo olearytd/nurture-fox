@@ -15,8 +15,8 @@ android {
         applicationId = "com.toleary.babyclock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "2.5"
+        versionCode = 21
+        versionName = "2.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,4 +78,6 @@ dependencies {
 
     implementation("androidx.glance:glance-appwidget:1.1.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    implementation("androidx.compose.material:material-icons-extended")
 }
