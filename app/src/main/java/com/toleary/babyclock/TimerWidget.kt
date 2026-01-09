@@ -3,28 +3,24 @@ package com.toleary.babyclock
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
-import androidx.glance.Button
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
+import androidx.glance.background
 import androidx.glance.layout.*
 import androidx.glance.text.Text
-import androidx.glance.layout.Alignment
-import androidx.glance.text.FontWeight
 import androidx.glance.text.TextStyle
+import androidx.glance.text.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.glance.action.clickable
-import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.background
 import java.util.concurrent.TimeUnit
 
-// TimerWidget.kt
 class TimerWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val latestFeed = BabyApplication.database.babyDao().getLatestFeedSync()
@@ -37,7 +33,6 @@ class TimerWidget : GlanceAppWidget() {
                         .background(GlanceTheme.colors.primaryContainer)
                         .padding(8.dp)
                 ) {
-                    // Main content opens the app
                     Column(
                         modifier = GlanceModifier
                             .fillMaxSize()
@@ -47,11 +42,9 @@ class TimerWidget : GlanceAppWidget() {
                     ) {
                         Text(
                             text = "Last Feed",
-                            style = TextStyle(
-                                fontSize = 12.sp,
-                                color = GlanceTheme.colors.onPrimaryContainer
-                            )
+                            style = TextStyle(fontSize = 12.sp, color = GlanceTheme.colors.onPrimaryContainer)
                         )
+
                         Text(
                             text = formatTimeAgo(latestFeed?.timestamp),
                             style = TextStyle(
@@ -62,12 +55,7 @@ class TimerWidget : GlanceAppWidget() {
                         )
                     }
 
-                    // Refresh Button in the corner
-                    Box(
-                        modifier = GlanceModifier.fillMaxSize(),
-                        contentAlignment = Alignment.TopEnd
-                    ) {
-                        // Using a simple Text as a button for maximum compatibility
+                    Box(modifier = GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
                         Text(
                             text = "🔄",
                             modifier = GlanceModifier.clickable(actionRunCallback<RefreshCallback>()),
@@ -90,7 +78,6 @@ fun formatTimeAgo(timestamp: Long?): String {
 
 class RefreshCallback : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        // This simply tells the widget to re-run provideGlance and fetch the latest time
         TimerWidget().update(context, glanceId)
     }
 }

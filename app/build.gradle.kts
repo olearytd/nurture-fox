@@ -15,8 +15,8 @@ android {
         applicationId = "com.toleary.babyclock"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "2.3"
+        versionCode = 21
+        versionName = "2.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -75,4 +75,9 @@ dependencies {
 
     implementation("androidx.sqlite:sqlite:2.4.0")
     implementation("net.zetetic:sqlcipher-android:4.5.4@aar")
+
+    implementation("androidx.glance:glance-appwidget:1.1.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    implementation("androidx.compose.material:material-icons-extended")
 }

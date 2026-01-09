@@ -34,3 +34,9 @@ google-services.json
 *.hprof
 
 .DS_Store
+
+# Garmin Connect IQ
+nurturefox-garmin/developer_key
+nurturefox-garmin/bin/
+nurturefox-garmin/gen/
+*.iq

@@ -6,24 +6,27 @@ import android.app.NotificationManager
 import android.app.TimePickerDialog
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.*
@@ -35,29 +38,32 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.updateAll
 import androidx.window.core.layout.WindowWidthSizeClass
 import androidx.lifecycle.lifecycleScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.toleary.babyclock.ui.theme.BabyClockTheme
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
+import com.patrykandpatrick.vico.compose.cartesian.*
+import com.patrykandpatrick.vico.compose.cartesian.axis.*
+import com.patrykandpatrick.vico.compose.cartesian.layer.*
 import com.patrykandpatrick.vico.core.cartesian.axis.AxisItemPlacer
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
-// NEW: Imports for Wearable Data Layer
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -68,15 +74,31 @@ class MainActivity : ComponentActivity() {
 
         createNotificationChannel()
 
+        val widgetRequest = PeriodicWorkRequestBuilder<WidgetWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "widget_heartbeat",
+            ExistingPeriodicWorkPolicy.KEEP,
+            widgetRequest
+        )
+
         setContent {
-            BabyClockTheme {
+            val context = LocalContext.current
+            val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
+
+            var themePreference by remember { mutableIntStateOf(prefs.getInt("theme_pref", 0)) }
+            val useDarkTheme = when(themePreference) {
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            var showWalkthrough by remember { mutableStateOf(prefs.getBoolean("show_walkthrough_v1", true)) }
+
+            BabyClockTheme(darkTheme = useDarkTheme) {
                 var selectedTab by remember { mutableIntStateOf(0) }
                 val tabs = listOf("Tracker", "Daily Log", "Trends", "Milestones")
-
                 val snackbarHostState = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
-                val context = LocalContext.current
-                val prefs = remember { context.getSharedPreferences("BabyClockPrefs", Context.MODE_PRIVATE) }
 
                 var showSettings by remember { mutableStateOf(false) }
                 var babyName by remember { mutableStateOf(prefs.getString("baby_name", "Nurture Fox") ?: "Nurture Fox") }
@@ -85,14 +107,25 @@ class MainActivity : ComponentActivity() {
                 val adaptiveInfo = currentWindowAdaptiveInfo()
                 val isExpanded = adaptiveInfo.windowSizeClass.windowWidthSizeClass == WindowWidthSizeClass.EXPANDED
 
+                if (showWalkthrough) {
+                    WalkthroughDialog(onDismiss = {
+                        showWalkthrough = false
+                        prefs.edit().putBoolean("show_walkthrough_v1", false).apply()
+                    })
+                }
+
                 Scaffold(
-                    modifier = Modifier.fillMaxSize().safeDrawingPadding(),
+                    modifier = Modifier.fillMaxSize(),
                     containerColor = MaterialTheme.colorScheme.background,
                     snackbarHost = { SnackbarHost(snackbarHostState) },
                     topBar = {
                         @OptIn(ExperimentalMaterial3Api::class)
                         CenterAlignedTopAppBar(
                             title = { Text(babyName) },
+                            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                containerColor = Color.Transparent,
+                                titleContentColor = MaterialTheme.colorScheme.onBackground
+                            ),
                             actions = {
                                 IconButton(onClick = { showSettings = true }) {
                                     Icon(Icons.Default.Settings, contentDescription = "Settings")
@@ -101,12 +134,27 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
-                        TabRow(selectedTabIndex = selectedTab) {
+                        NavigationBar(
+                            containerColor = Color.Transparent,
+                            modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                        ) {
                             tabs.forEachIndexed { index, title ->
-                                Tab(
+                                NavigationBarItem(
                                     selected = selectedTab == index,
                                     onClick = { selectedTab = index },
-                                    text = { Text(title) }
+                                    label = { Text(title) },
+                                    icon = {
+                                        Icon(
+                                            imageVector = when(index) {
+                                                0 -> Icons.Default.Timer
+                                                1 -> Icons.AutoMirrored.Filled.List
+                                                2 -> Icons.Default.Timeline
+                                                3 -> Icons.Default.Stars
+                                                else -> Icons.Default.Timer
+                                            },
+                                            contentDescription = null
+                                        )
+                                    }
                                 )
                             }
                         }
@@ -116,6 +164,12 @@ class MainActivity : ComponentActivity() {
                         SettingsDialog(
                             currentName = babyName,
                             currentBirthday = babyBirthDate,
+                            currentTheme = themePreference,
+                            onThemeChange = { themePreference = it },
+                            onShowWalkthrough = {
+                                showSettings = false
+                                showWalkthrough = true
+                            },
                             onDismiss = { showSettings = false },
                             onSave = { name, bday ->
                                 babyName = name
@@ -130,7 +184,7 @@ class MainActivity : ComponentActivity() {
                         if (isExpanded && selectedTab == 1) {
                             Row(Modifier.fillMaxSize()) {
                                 Box(Modifier.weight(0.4f)) {
-                                    DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
+                                    DailyLogScreen(onDeleteLatest = { stopBabyTimer() }, snackbarHostState = snackbarHostState)
                                 }
                                 VerticalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
                                 Box(Modifier.weight(0.6f)) {
@@ -152,8 +206,8 @@ class MainActivity : ComponentActivity() {
 
                                             if (category == "FEED") {
                                                 startBabyTimer(value, timestamp)
-                                                // NEW: Sync the feeding timestamp to the watch
                                                 syncLastFeedToWatch(context, timestamp)
+                                                TimerWidget().updateAll(context)
                                             }
 
                                             scope.launch {
@@ -162,7 +216,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 )
-                                1 -> DailyLogScreen(onDeleteLatest = { stopBabyTimer() })
+                                1 -> DailyLogScreen(onDeleteLatest = { stopBabyTimer() }, snackbarHostState = snackbarHostState)
                                 2 -> TrendsScreen()
                                 3 -> MilestonesScreen(babyBirthDate)
                             }
@@ -173,13 +227,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // NEW: Helper to push data to the Wear OS Data Layer
     private fun syncLastFeedToWatch(context: Context, timestamp: Long) {
         val dataClient = Wearable.getDataClient(context)
         val putDataReq = PutDataMapRequest.create("/last_feed").apply {
             dataMap.putLong("timestamp", timestamp)
         }.asPutDataRequest().setUrgent()
-
         dataClient.putDataItem(putDataReq)
     }
 
@@ -205,9 +257,59 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun WalkthroughDialog(onDismiss: () -> Unit) {
+    var step by remember { mutableIntStateOf(1) }
+
+    AlertDialog(
+        onDismissRequest = { },
+        confirmButton = {
+            Button(onClick = { if (step < 3) step++ else onDismiss() }) {
+                Text(if (step < 3) "Next" else "Get Started")
+            }
+        },
+        title = {
+            Text(when(step) {
+                1 -> "Welcome to Nurture Fox"
+                2 -> "Smart Tracking"
+                else -> "Home Screen Widget"
+            })
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.size(80.dp).background(MaterialTheme.colorScheme.primaryContainer, shape = CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = when(step) {
+                            1 -> Icons.Default.Timer
+                            2 -> Icons.Default.Timeline
+                            else -> Icons.Default.Settings
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = when(step) {
+                        1 -> "Log your baby's meal to start a timer. It stays synced with your watch and notifications."
+                        2 -> "Trends compare today's activity against your 7-day baseline to show you how your baby is doing and growing!"
+                        else -> "Customize your Home Screen widgets in settings to log common feed sizes with a single tap."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    )
+}
+
+@Composable
 fun SettingsDialog(
     currentName: String,
     currentBirthday: Long,
+    currentTheme: Int,
+    onThemeChange: (Int) -> Unit,
+    onShowWalkthrough: () -> Unit,
     onDismiss: () -> Unit,
     onSave: (String, Long) -> Unit
 ) {
@@ -221,11 +323,12 @@ fun SettingsDialog(
     var smallAmount by remember { mutableStateOf(prefs.getString("quick_amount_small", "2") ?: "2") }
     var largeAmount by remember { mutableStateOf(prefs.getString("quick_amount_large", "6") ?: "6") }
 
-    val dateLabel = if (birthday == 0L) "Select Birthday" else SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(birthday))
+    val themeOptions = listOf("System Default", "Light", "Dark")
+    var themeExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Settings & Profile") },
+        title = { Text("Settings") },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -243,6 +346,7 @@ fun SettingsDialog(
                         birthday = newCal.timeInMillis
                     }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
                 }, modifier = Modifier.fillMaxWidth()) {
+                    val dateLabel = if (birthday == 0L) "Select Birthday" else SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(birthday))
                     Text(dateLabel)
                 }
 
@@ -268,30 +372,54 @@ fun SettingsDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-                Text("System Status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                    Row(
-                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Encryption", style = MaterialTheme.typography.bodyMedium)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(8.dp).background(Color(0xFF4CAF50), shape = MaterialTheme.shapes.small))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Hardware Secured", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text("Appearance", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedCard(onClick = { themeExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("Theme Mode")
+                            Text(themeOptions[currentTheme], fontWeight = FontWeight.Bold)
                         }
                     }
+                    DropdownMenu(expanded = themeExpanded, onDismissRequest = { themeExpanded = false }) {
+                        themeOptions.forEachIndexed { index, label ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = {
+                                onThemeChange(index)
+                                prefs.edit().putInt("theme_pref", index).apply()
+                                themeExpanded = false
+                            })
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Text("Privacy & Security", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                OutlinedCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/olearytd/nurture-fox/blob/main/PRIVACY.md"))
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Privacy Policy", style = MaterialTheme.typography.bodyLarge)
+                            Text("View on GitHub", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                        }
+                        Icon(Icons.Default.Info, contentDescription = null)
+                    }
+                }
+
+                TextButton(onClick = onShowWalkthrough, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Help, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Show App Walkthrough")
                 }
             }
         },
         confirmButton = {
             Button(onClick = {
-                prefs.edit()
-                    .putString("quick_amount_small", smallAmount)
-                    .putString("quick_amount_large", largeAmount)
-                    .apply()
-
+                prefs.edit().putString("quick_amount_small", smallAmount).putString("quick_amount_large", largeAmount).apply()
                 scope.launch { ActionWidget().updateAll(context) }
                 onSave(name, birthday)
             }) { Text("Save All") }
@@ -407,27 +535,41 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
     var showDiaperSheet by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    // Combined Date and Time state
     var customTimestamp by remember { mutableStateOf<Long?>(null) }
-    val displayTime = customTimestamp?.let { SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(it)) } ?: "Now"
+    val displayTime = customTimestamp?.let {
+        SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(Date(it))
+    } ?: "Now"
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "Nurture Fox", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(24.dp))
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(" Logging for: ", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground)
             TextButton(onClick = {
                 val cal = Calendar.getInstance()
-                TimePickerDialog(context, { _, h, m ->
-                    val selected = Calendar.getInstance().apply { set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m) }
-                    customTimestamp = selected.timeInMillis
-                }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), false).show()
-            }) { Text(displayTime) }
+                if (customTimestamp != null) cal.timeInMillis = customTimestamp!!
+
+                // Chain: Date Picker then Time Picker
+                DatePickerDialog(context, { _, y, m, d ->
+                    cal.set(y, m, d)
+                    TimePickerDialog(context, { _, h, min ->
+                        cal.set(Calendar.HOUR_OF_DAY, h)
+                        cal.set(Calendar.MINUTE, min)
+                        customTimestamp = cal.timeInMillis
+                    }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), false).show()
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+            }) {
+                Text(displayTime, fontWeight = FontWeight.Bold)
+            }
             if (customTimestamp != null) {
                 IconButton(onClick = { customTimestamp = null }) {
                     Icon(Icons.Default.Delete, "Reset", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
+
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(value = amountText, onValueChange = { amountText = it }, label = { Text(if (isOz) "Amount (oz)" else "Amount (ml)") }, modifier = Modifier.width(240.dp), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
@@ -442,6 +584,7 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
         Spacer(modifier = Modifier.height(8.dp))
         Button(onClick = { showDiaperSheet = true }, modifier = Modifier.fillMaxWidth(0.7f), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Text("Log Diaper") }
     }
+
     if (showDiaperSheet) {
         ModalBottomSheet(onDismissRequest = { showDiaperSheet = false }) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
@@ -459,9 +602,9 @@ fun BabyClockScreen(onLogEvent: (String, String, String, Long) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun DailyLogScreen(onDeleteLatest: () -> Unit) {
+fun DailyLogScreen(onDeleteLatest: () -> Unit, snackbarHostState: SnackbarHostState) {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -481,13 +624,36 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
     val combinedTotalOz = ((rawOz * 30.0 + rawMl) / 30.0).toFloat()
     val progress = if (dailyGoalOz > 0) (combinedTotalOz / dailyGoalOz).coerceIn(0f, 1f) else 0f
 
-    val threeDaysAgo = todayStart - (2 * 24 * 60 * 60 * 1000L)
-    val recentEvents = events.filter { it.timestamp >= threeDaysAgo }
+    val historyLimit = todayStart - (13 * 24 * 60 * 60 * 1000L)
+    val recentEvents = events.filter { it.timestamp >= historyLimit }
+
+    val listState = rememberLazyListState()
 
     if (editingEvent != null) {
-        EditEventDialog(event = editingEvent!!, onDismiss = { editingEvent = null }, onConfirm = { newAmount, newUnit, newTimestamp ->
-            scope.launch { BabyApplication.database.babyDao().updateEvent(editingEvent!!.copy(amountMl = newAmount, subtype = newUnit, timestamp = newTimestamp)); editingEvent = null }
-        })
+        EditEventDialog(
+            event = editingEvent!!,
+            onDismiss = { editingEvent = null },
+            onConfirm = { newAmount, newUnit, newTimestamp ->
+                scope.launch {
+                    BabyApplication.database.babyDao().updateEvent(editingEvent!!.copy(amountMl = newAmount, subtype = newUnit, timestamp = newTimestamp))
+                    editingEvent = null
+                    snackbarHostState.showSnackbar("Updated to $newAmount $newUnit")
+                }
+            },
+            onRestartTimer = { timestamp, amount ->
+                val intent = Intent(context, TimerService::class.java).apply {
+                    putExtra("START_TIME", timestamp)
+                    putExtra("FEED_AMOUNT", amount)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+                editingEvent = null
+                scope.launch { snackbarHostState.showSnackbar("Timer restarted!") }
+            }
+        )
     }
 
     if (showGoalDialog) {
@@ -520,15 +686,45 @@ fun DailyLogScreen(onDeleteLatest: () -> Unit) {
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        Text(text = "Recent History (3 Days)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "History (Last 14 Days)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            IconButton(onClick = {
+                val cal = Calendar.getInstance()
+                DatePickerDialog(context, { _, y, m, d ->
+                    val selected = Calendar.getInstance().apply { set(y, m, d) }
+                    val targetDate = SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(selected.time)
+                    val grouped = recentEvents.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
+
+                    val index = grouped.keys.toList().indexOf(targetDate)
+                    if (index != -1) {
+                        scope.launch { listState.animateScrollToItem(index * 2) }
+                    }
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+            }) {
+                Icon(Icons.Default.DateRange, contentDescription = "Jump to date", tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
             val groupedEvents = recentEvents.groupBy { SimpleDateFormat("EEEE, MMM d", Locale.getDefault()).format(Date(it.timestamp)) }
             groupedEvents.forEach { (date, eventsInDay) ->
-                item {
-                    Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                stickyHeader {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Column {
+                            Text(text = date, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(vertical = 8.dp))
+                            HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                    }
                 }
+
                 items(items = eventsInDay, key = { "${it.id}_${it.type}" }) { event ->
                     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -611,19 +807,82 @@ fun FeedingCard(event: BabyEvent) {
 }
 
 @Composable
-fun EditEventDialog(event: BabyEvent, onDismiss: () -> Unit, onConfirm: (Float, String, Long) -> Unit) {
+fun EditEventDialog(
+    event: BabyEvent,
+    onDismiss: () -> Unit,
+    onConfirm: (Float, String, Long) -> Unit,
+    onRestartTimer: (Long, String) -> Unit
+) {
     val context = LocalContext.current
     var amountText by remember { mutableStateOf(event.amountMl.toString()) }
+    var selectedUnit by remember { mutableStateOf(event.subtype) }
+
     val calendar = remember { Calendar.getInstance().apply { timeInMillis = event.timestamp } }
     var selectedTimeText by remember { mutableStateOf(SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(calendar.time)) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(if (event.type == "FEED") "Edit Feed" else "Edit Diaper") }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (event.type == "FEED") OutlinedTextField(value = amountText, onValueChange = { amountText = it }, label = { Text("Amount") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
-            Button(onClick = { TimePickerDialog(context, { _, h, m -> calendar.set(Calendar.HOUR_OF_DAY, h); calendar.set(Calendar.MINUTE, m); selectedTimeText = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(calendar.time) }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show() }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Time: $selectedTimeText")
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (event.type == "FEED") "Edit Feed" else "Edit Diaper") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (event.type == "FEED") {
+                    OutlinedTextField(
+                        value = amountText,
+                        onValueChange = { newText ->
+                            amountText = newText
+                            val value = newText.toFloatOrNull() ?: 0f
+                            if (value > 0) {
+                                selectedUnit = if (value >= 9.5f) "ml" else "oz"
+                            }
+                        },
+                        label = { Text("Amount") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = {
+                            Button(
+                                onClick = { selectedUnit = if (selectedUnit == "oz") "ml" else "oz" },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.padding(end = 4.dp).height(32.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text(selectedUnit, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    )
+
+                    Button(
+                        onClick = { onRestartTimer(event.timestamp, amountText) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Restart Notification Timer")
+                    }
+                }
+
+                Button(onClick = {
+                    TimePickerDialog(context, { _, h, m ->
+                        calendar.set(Calendar.HOUR_OF_DAY, h); calendar.set(Calendar.MINUTE, m);
+                        selectedTimeText = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault()).format(calendar.time)
+                    }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false).show()
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Edit, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Time: $selectedTimeText")
+                }
             }
-        }
-    }, confirmButton = { Button(onClick = { onConfirm(amountText.toFloatOrNull() ?: event.amountMl, event.subtype, calendar.timeInMillis) }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+        },
+        confirmButton = {
+            Button(onClick = {
+                onConfirm(amountText.toFloatOrNull() ?: event.amountMl, selectedUnit, calendar.timeInMillis)
+            }) { Text("Save") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable
@@ -637,28 +896,38 @@ fun SummaryStat(label: String, value: String) {
 @Composable
 fun TrendsScreen() {
     val events by BabyApplication.database.babyDao().getAllEvents().collectAsState(initial = emptyList())
-
     val calendar = Calendar.getInstance()
     val now = calendar.timeInMillis
-
-    calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.HOUR_OF_DAY, 0); calendar.set(Calendar.MINUTE, 0); calendar.set(Calendar.SECOND, 0); calendar.set(Calendar.MILLISECOND, 0)
     val startOfToday = calendar.timeInMillis
     val timeElapsedToday = now - startOfToday
-
-    val startOfYesterday = startOfToday - (24 * 60 * 60 * 1000L)
-    val endOfYesterdayPeriod = startOfYesterday + timeElapsedToday
-
     val todayEvents = events.filter { it.timestamp in startOfToday..now }
-    val yesterdayPeriodEvents = events.filter { it.timestamp in startOfYesterday..endOfYesterdayPeriod }
-
     val todayVol = todayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
-    val yesterdayVol = yesterdayPeriodEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+    val todayDiapers = todayEvents.count { it.type == "DIAPER" }
+
+    var totalBaselineVol = 0.0
+    var totalBaselineDiapers = 0
+    var activeDaysCount = 0
+
+    for (i in 1..7) {
+        val dayStart = startOfToday - (i * 24 * 60 * 60 * 1000L)
+        val dayEnd = dayStart + timeElapsedToday
+        val dayEvents = events.filter { it.timestamp in dayStart..dayEnd }
+        val fullDayEvents = events.filter { it.timestamp in dayStart..(dayStart + 24 * 60 * 60 * 1000L) }
+        if (fullDayEvents.isNotEmpty()) {
+            activeDaysCount++
+            totalBaselineVol += dayEvents.filter { it.type == "FEED" }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
+            totalBaselineDiapers += dayEvents.count { it.type == "DIAPER" }
+        }
+    }
+
+    val avgBaselineVol = if (activeDaysCount > 0) totalBaselineVol / activeDaysCount else 0.0
+    val avgBaselineDiapers = if (activeDaysCount > 0) totalBaselineDiapers.toDouble() / activeDaysCount else 0.0
 
     val feedingEvents = events.filter { it.type == "FEED" }
     val diaperEvents = events.filter { it.type == "DIAPER" }
     val dayCount = events.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp)) }.size.coerceAtLeast(1)
     val totalOz = feedingEvents.sumOf { if (it.subtype == "oz") (it.amountMl * 30.0) else it.amountMl.toDouble() } / 30.0
-
     val sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000L)
     val modelProducer24h = remember { CartesianChartModelProducer.build() }
     val modelProducer7d = remember { CartesianChartModelProducer.build() }
@@ -691,37 +960,34 @@ fun TrendsScreen() {
         Text("Trends & Habits", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
         Spacer(modifier = Modifier.height(16.dp))
 
-        StatCategoryCard("Previous Day Comparison") {
-            Text("Today vs Yesterday (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
+        StatCategoryCard("7-Day Baseline Comparison") {
+            Text("Today vs. Weekly Avg so far (up to ${SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(now))})", style = MaterialTheme.typography.labelSmall)
             Spacer(Modifier.height(8.dp))
             StatRow("Vol Today", "%.1f oz".format(todayVol))
-            StatRow("Vol Yesterday", "%.1f oz".format(yesterdayVol))
-
-            val volDiff = todayVol - yesterdayVol
-            Text(
-                text = if (volDiff >= 0) "+%.1f oz vs yesterday".format(volDiff) else "%.1f oz vs yesterday".format(volDiff),
-                color = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold
-            )
+            StatRow("7-Day Avg", "%.1f oz".format(avgBaselineVol))
+            val volDiff = todayVol - avgBaselineVol
+            val volColor = if (volDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+            Text(text = "${if(volDiff >= 0) "+" else ""}${"%.1f".format(volDiff)} oz vs. baseline", color = volColor, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            if (activeDaysCount < 7) {
+                Text("Note: Baseline based on $activeDaysCount days of data.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 4.dp))
+            }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            StatRow("Diapers Today", "${todayEvents.count { it.type == "DIAPER" }}")
-            StatRow("Diapers Yesterday", "${yesterdayPeriodEvents.count { it.type == "DIAPER" }}")
+            StatRow("Diapers Today", "$todayDiapers")
+            StatRow("7-Day Avg", "%.1f".format(avgBaselineDiapers))
+            val diaperDiff = todayDiapers - avgBaselineDiapers
+            Text(text = "${if(diaperDiff >= 0) "+" else ""}${"%.1f".format(diaperDiff)} diapers vs. baseline", style = MaterialTheme.typography.labelSmall, color = if (diaperDiff >= 0) Color(0xFF4CAF50) else Color(0xFFF44336))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Volume (oz) - Last 24h", modelProducer24h)
         Spacer(modifier = Modifier.height(16.dp))
         ChartCard("Daily Volume (oz) - Last 7 Days", modelProducer7d)
-        Spacer(modifier = Modifier.height(16.dp))
 
         StatCategoryCard("Historical Summary") {
             val last7d = now - (7 * 24 * 60 * 60 * 1000L)
             val last14d = now - (14 * 24 * 60 * 60 * 1000L)
             val last30d = now - (30 * 24 * 60 * 60 * 1000L)
-
             fun getVol(since: Long) = feedingEvents.filter { it.timestamp >= since }.sumOf { if(it.subtype == "oz") it.amountMl.toDouble() else it.amountMl / 30.0 }
-
             StatRow("Last 7 Days Total", "%.0f oz".format(getVol(last7d)))
             StatRow("Last 14 Days Total", "%.0f oz".format(getVol(last14d)))
             StatRow("Last 30 Days Total", "%.0f oz".format(getVol(last30d)))
@@ -735,7 +1001,6 @@ fun TrendsScreen() {
         }
 
         Spacer(modifier = Modifier.height(16.dp))
-
         StatCategoryCard("Diaper History") {
             StatRow("Total Changes", "${diaperEvents.size}")
             StatRow("Daily Average", "%.1f".format(diaperEvents.size.toFloat() / dayCount))
