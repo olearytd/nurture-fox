@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D89D144E2F1663B400FAE788 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D89D144D2F1663B400FAE788 /* WidgetKit.framework */; };
+		D89D14502F1663B400FAE788 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D89D144F2F1663B400FAE788 /* SwiftUI.framework */; };
+		D89D14612F1663B500FAE788 /* NurtureFoxWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D8422F3D2F11C1AC0010FAA3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +27,36 @@
 			remoteGlobalIDString = D8422F2A2F11C1AB0010FAA3;
 			remoteInfo = "nurture-fox";
 		};
+		D89D145F2F1663B500FAE788 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D89D144A2F1663B400FAE788;
+			remoteInfo = NurtureFoxWidgetsExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D89D14622F1663B500FAE788 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D89D14612F1663B500FAE788 /* NurtureFoxWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		D8422F2B2F11C1AB0010FAA3 /* nurture-fox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "nurture-fox.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8422F3C2F11C1AC0010FAA3 /* nurture-foxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "nurture-foxTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "nurture-foxUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NurtureFoxWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D89D144D2F1663B400FAE788 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		D89D144F2F1663B400FAE788 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -37,6 +67,22 @@
 			);
 			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
 		};
+		D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+		};
+		D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BabyEvent.swift,
+				LogDiaperIntent.swift,
+				TimerAttributes.swift,
+			);
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -44,6 +90,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				D8422F4E2F11C1AC0010FAA3 /* Exceptions for "nurture-fox" folder in "nurture-fox" target */,
+				D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */,
 			);
 			path = "nurture-fox";
 			sourceTree = "<group>";
@@ -56,6 +103,14 @@
 		D8422F492F11C1AC0010FAA3 /* nurture-foxUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "nurture-foxUITests";
+			sourceTree = "<group>";
+		};
+		D89D14512F1663B400FAE788 /* NurtureFoxWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */,
+			);
+			path = NurtureFoxWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -82,6 +137,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D89D14482F1663B400FAE788 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D89D14502F1663B400FAE788 /* SwiftUI.framework in Frameworks */,
+				D89D144E2F1663B400FAE788 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -91,6 +155,8 @@
 				D8422F2D2F11C1AB0010FAA3 /* nurture-fox */,
 				D8422F3F2F11C1AC0010FAA3 /* nurture-foxTests */,
 				D8422F492F11C1AC0010FAA3 /* nurture-foxUITests */,
+				D89D14512F1663B400FAE788 /* NurtureFoxWidgets */,
+				D89D144C2F1663B400FAE788 /* Frameworks */,
 				D8422F2C2F11C1AB0010FAA3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,8 +167,18 @@
 				D8422F2B2F11C1AB0010FAA3 /* nurture-fox.app */,
 				D8422F3C2F11C1AC0010FAA3 /* nurture-foxTests.xctest */,
 				D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */,
+				D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D89D144C2F1663B400FAE788 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D89D144D2F1663B400FAE788 /* WidgetKit.framework */,
+				D89D144F2F1663B400FAE788 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -115,10 +191,12 @@
 				D8422F272F11C1AB0010FAA3 /* Sources */,
 				D8422F282F11C1AB0010FAA3 /* Frameworks */,
 				D8422F292F11C1AB0010FAA3 /* Resources */,
+				D89D14622F1663B500FAE788 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D89D14602F1663B500FAE788 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				D8422F2D2F11C1AB0010FAA3 /* nurture-fox */,
@@ -176,6 +254,28 @@
 			productReference = D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D89D14652F1663B500FAE788 /* Build configuration list for PBXNativeTarget "NurtureFoxWidgetsExtension" */;
+			buildPhases = (
+				D89D14472F1663B400FAE788 /* Sources */,
+				D89D14482F1663B400FAE788 /* Frameworks */,
+				D89D14492F1663B400FAE788 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D89D14512F1663B400FAE788 /* NurtureFoxWidgets */,
+			);
+			name = NurtureFoxWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = NurtureFoxWidgetsExtension;
+			productReference = D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -197,6 +297,9 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = D8422F2A2F11C1AB0010FAA3;
 					};
+					D89D144A2F1663B400FAE788 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = D8422F262F11C1AB0010FAA3 /* Build configuration list for PBXProject "nurture-fox" */;
@@ -216,6 +319,7 @@
 				D8422F2A2F11C1AB0010FAA3 /* nurture-fox */,
 				D8422F3B2F11C1AC0010FAA3 /* nurture-foxTests */,
 				D8422F452F11C1AC0010FAA3 /* nurture-foxUITests */,
+				D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -236,6 +340,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D8422F442F11C1AC0010FAA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D89D14492F1663B400FAE788 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -266,6 +377,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D89D14472F1663B400FAE788 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -279,6 +397,11 @@
 			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
 			targetProxy = D8422F472F11C1AC0010FAA3 /* PBXContainerItemProxy */;
 		};
+		D89D14602F1663B500FAE788 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+			targetProxy = D89D145F2F1663B500FAE788 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -289,11 +412,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "nurture-fox/Info.plist";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -323,11 +447,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "nurture-fox/Info.plist";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -555,6 +680,68 @@
 			};
 			name = Release;
 		};
+		D89D14632F1663B500FAE788 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NurtureFoxWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.NurtureFoxWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D89D14642F1663B500FAE788 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NurtureFoxWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.NurtureFoxWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -590,6 +777,15 @@
 			buildConfigurations = (
 				D8422F582F11C1AC0010FAA3 /* Debug */,
 				D8422F592F11C1AC0010FAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D89D14652F1663B500FAE788 /* Build configuration list for PBXNativeTarget "NurtureFoxWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D89D14632F1663B500FAE788 /* Debug */,
+				D89D14642F1663B500FAE788 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

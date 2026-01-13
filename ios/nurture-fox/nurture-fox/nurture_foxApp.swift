@@ -10,23 +10,22 @@ import SwiftData
 
 @main
 struct nurture_foxApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
-
+    @AppStorage("themePreference") private var themePreference: Int = 0
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(scheme)
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(for: [BabyEvent.self, Milestone.self])
+    }
+    
+    // Logic to switch theme globally
+    var scheme: ColorScheme? {
+        switch themePreference {
+        case 1: return .light
+        case 2: return .dark
+        default: return nil // System default
+        }
     }
 }
