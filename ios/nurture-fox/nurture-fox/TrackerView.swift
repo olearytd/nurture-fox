@@ -13,6 +13,10 @@ struct TrackerView: View {
     @State private var showDatePicker: Bool = false
     @State private var showSettings = false
     
+    // Toast States
+    @State private var showToast: Bool = false
+    @State private var toastMessage: String = ""
+    
     @AppStorage("babyName") private var babyName: String = "Baby"
     
     var body: some View {
@@ -34,6 +38,21 @@ struct TrackerView: View {
                             
                             Text("\(lastFeed.amount, specifier: "%.1f") \(lastFeed.subtype) at \(lastFeed.timestamp.formatted(date: .omitted, time: .shortened))")
                                 .font(.subheadline)
+                            
+                            // Restart Button on Card (Only if feed is < 8 hours old)
+                            if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
+                                Button {
+                                    startLiveActivity(startTime: lastFeed.timestamp)
+                                } label: {
+                                    Label("Restart Live Activity", systemImage: "play.circle.fill")
+                                        .font(.caption.bold())
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(.white.opacity(0.2))
+                                        .cornerRadius(20)
+                                }
+                                .padding(.top, 10)
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 30)
@@ -42,7 +61,7 @@ struct TrackerView: View {
                         .cornerRadius(24)
                     }
 
-                    // --- ENHANCED DATE & TIME SELECTION ---
+                    // --- DATE & TIME SELECTION ---
                     HStack(spacing: 12) {
                         Label("Logging for:", systemImage: "clock.badge.checkmark")
                             .foregroundStyle(.secondary)
@@ -121,6 +140,43 @@ struct TrackerView: View {
                         .tint(.secondary)
                     }
                     .padding(.horizontal, 40)
+                    
+                    // --- RECENT LOGS SECTION ---
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Recent Logs")
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        ForEach(recentEvents.prefix(5)) { event in
+                            HStack {
+                                Image(systemName: event.type == "FEED" ? "mouth.fill" : "drop.fill")
+                                    .foregroundStyle(event.type == "FEED" ? .blue : .orange)
+                                
+                                VStack(alignment: .leading) {
+                                    Text(event.type == "FEED" ? "Feed: \(event.amount, specifier: "%.1f") \(event.subtype)" : "Diaper: \(event.subtype)")
+                                        .font(.subheadline.bold())
+                                    Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if event.type == "FEED" && abs(event.timestamp.timeIntervalSinceNow) < 28800 {
+                                    Button {
+                                        startLiveActivity(startTime: event.timestamp)
+                                    } label: {
+                                        Image(systemName: "play.circle")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color.gray.opacity(0.05))
+                            .cornerRadius(12)
+                        }
+                    }
+                    .padding(.horizontal)
                 }
                 .padding()
             }
@@ -135,10 +191,8 @@ struct TrackerView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            // --- THE NEW SPLIT DATEPICKER SHEET ---
             .sheet(isPresented: $showDatePicker) {
                 NavigationStack {
-                    // Use a List or a ScrollView to give the content native spacing
                     List {
                         Section {
                             HStack {
@@ -170,7 +224,7 @@ struct TrackerView: View {
                                 displayedComponents: .date
                             )
                             .datePickerStyle(.graphical)
-                            .listRowInsets(EdgeInsets()) // Makes the calendar go edge-to-edge
+                            .listRowInsets(EdgeInsets())
                         }
                     }
                     .navigationTitle("Adjust Time")
@@ -189,6 +243,24 @@ struct TrackerView: View {
                 Button("Poop") { logDiaper(subtype: "Poop") }
                 Button("Both") { logDiaper(subtype: "Both") }
                 Button("Cancel", role: .cancel) { }
+            }
+            // --- TOAST OVERLAY ---
+            .overlay(alignment: .bottom) {
+                if showToast {
+                    Text(toastMessage)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(Capsule().fill(Color.black.opacity(0.8)))
+                        .padding(.bottom, 50)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                withAnimation { showToast = false }
+                            }
+                        }
+                }
             }
         }
     }
@@ -217,13 +289,14 @@ struct TrackerView: View {
     }
     
     private func startLiveActivity(startTime: Date) {
+        // Kill existing activities first
         for activity in Activity<TimerAttributes>.activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
 
         let attributes = TimerAttributes(babyName: babyName)
         let state = TimerAttributes.ContentState(startTime: startTime)
-        let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime) 
+        let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime)
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
         
         do {
@@ -232,8 +305,17 @@ struct TrackerView: View {
                 content: activityContent,
                 pushType: nil
             )
+            
+            // Trigger Success Toast
+            toastMessage = "Live Activity Started"
+            withAnimation(.spring()) {
+                showToast = true
+            }
+            
         } catch {
             print("❌ Error: \(error.localizedDescription)")
+            toastMessage = "Error starting Activity"
+            withAnimation { showToast = true }
         }
     }
     
