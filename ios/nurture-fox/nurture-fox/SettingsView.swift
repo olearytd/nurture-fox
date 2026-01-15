@@ -7,53 +7,96 @@
 
 
 import SwiftUI
+import SwiftData
+import CloudKit
 
 struct SettingsView: View {
-    // SharedPreferences equivalents in iOS [Image of SwiftUI AppStorage vs Android SharedPreferences]
-    @AppStorage("babyName") private var babyName: String = "Nurture Fox"
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("babyName") private var babyName: String = "Baby"
     @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
-    @AppStorage("themePreference") private var themePreference: Int = 0 // 0: System, 1: Light, 2: Dark
+    @AppStorage("themePreference") private var themePreference: Int = 0
     
-    @Environment(\.dismiss) var dismiss
-    
+    // Check if iCloud is actually active
+    @State private var accountStatus: CKAccountStatus = .couldNotDetermine
+
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Child Profile")) {
+                Section("Baby Profile") {
                     TextField("Baby Name", text: $babyName)
-                    
                     DatePicker("Birthday", selection: Binding(
                         get: { Date(timeIntervalSince1970: babyBirthday) },
                         set: { babyBirthday = $0.timeIntervalSince1970 }
-                    ), displayedComponents: .date)
+                    ), in: ...Date(), displayedComponents: .date)
+                }
+
+                Section("Cloud Sync") {
+                    HStack {
+                        Image(systemName: cloudIcon)
+                            .foregroundStyle(cloudColor)
+                        VStack(alignment: .leading) {
+                            Text(cloudStatusText)
+                                .font(.subheadline)
+                            Text(cloudDetailText)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .onAppear {
+                        checkCloudStatus()
+                    }
                 }
                 
-                Section(header: Text("Appearance")) {
-                    Picker("Theme Mode", selection: $themePreference) {
+                Section("Appearance") {
+                    Picker("Theme", selection: $themePreference) {
                         Text("System").tag(0)
                         Text("Light").tag(1)
                         Text("Dark").tag(2)
-                    }
-                    .pickerStyle(.navigationLink) // Classic iOS chevron style
-                }
-                
-                Section(header: Text("Legal")) {
-                    Link(destination: URL(string: "https://github.com/olearytd/nurture-fox/blob/main/PRIVACY.md")!) {
-                        HStack {
-                            Label("Privacy Policy", systemImage: "lock.shield")
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
                     }
                 }
             }
             .navigationTitle("Settings")
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
+                Button("Done") { dismiss() }
+            }
+        }
+    }
+
+    // --- CLOUD LOGIC ---
+    
+    private var cloudStatusText: String {
+        switch accountStatus {
+        case .available: return "iCloud Synced"
+        case .noAccount: return "Not Signed In"
+        case .restricted: return "Sync Restricted"
+        default: return "Syncing..."
+        }
+    }
+
+    private var cloudDetailText: String {
+        switch accountStatus {
+        case .available: return "Data is backing up to your iCloud account."
+        case .noAccount: return "Sign in to iCloud in Settings to sync data across devices."
+        default: return "Check your internet connection or iCloud settings."
+        }
+    }
+
+    private var cloudIcon: String {
+        switch accountStatus {
+        case .available: return "icloud.checkmark.fill"
+        case .noAccount: return "icloud.slash"
+        default: return "icloud"
+        }
+    }
+
+    private var cloudColor: Color {
+        accountStatus == .available ? .green : .orange
+    }
+
+    private func checkCloudStatus() {
+        CKContainer.default().accountStatus { status, error in
+            DispatchQueue.main.async {
+                self.accountStatus = status
             }
         }
     }

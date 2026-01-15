@@ -1,10 +1,3 @@
-//
-//  NurtureFoxWidgetsLiveActivity.swift
-//  NurtureFoxWidgets
-//
-//  Created by Tim OLeary on 1/13/26.
-//
-
 import ActivityKit
 import WidgetKit
 import SwiftUI
@@ -13,32 +6,52 @@ import AppIntents
 struct NurtureFoxLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: TimerAttributes.self) { context in
-            // LOCK SCREEN UI
-            VStack {
+            // --- LOCK SCREEN UI ---
+            HStack(spacing: 0) {
+                // 1. Accent Bar: Helps define the card shape on any wallpaper
+                Rectangle()
+                    .fill(Color.orange.gradient)
+                    .frame(width: 6)
+                
                 HStack {
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text("\(context.attributes.babyName) • Last Feed")
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
+                        
                         Text(context.state.startTime, style: .timer)
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .foregroundColor(.blue)
+                            .font(.system(size: 38, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            // Using primary color for maximum contrast
+                            .foregroundColor(.primary)
                     }
+                    
                     Spacer()
+                    
+                    // Bottle Icon - using a softer blue but keeping it prominent
                     Image(systemName: "drop.fill")
-                        .font(.largeTitle)
+                        .font(.title)
                         .foregroundStyle(.blue.gradient)
+                        .padding(12)
+                        .background(.blue.opacity(0.1))
+                        .clipShape(Circle())
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
-            .padding()
-            .activityBackgroundTint(Color.white.opacity(0.5)) // Semi-transparent look
+            // Use 'System Material' to blur the wallpaper behind the text
+            .activityBackgroundTint(Color.clear)
+            .activitySystemActionForegroundColor(.primary)
+            // This is the magic modifier for readability:
+            .background(.ultraThinMaterial)
+
         } dynamicIsland: { context in
             DynamicIsland {
                 // 1. EXPANDED VIEW (Long-press)
                 DynamicIslandExpandedRegion(.leading) {
                     HStack {
                         Image(systemName: "drop.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.orange)
                         Text(context.attributes.babyName)
                             .font(.headline)
                     }
@@ -51,13 +64,12 @@ struct NurtureFoxLiveActivity: Widget {
                             .foregroundStyle(.secondary)
                         Text(context.state.startTime, style: .timer)
                             .font(.title2.bold())
-                            .monospacedDigit() // Prevents text "jumping"
-                            .foregroundColor(.blue)
+                            .monospacedDigit()
+                            .foregroundColor(.orange)
                     }
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    // Quick Action Buttons
                     HStack(spacing: 15) {
                         Button(intent: LogDiaperIntent(type: "Pee")) {
                             Label("Pee", systemImage: "drop")
@@ -71,22 +83,20 @@ struct NurtureFoxLiveActivity: Widget {
                         .buttonStyle(.bordered)
                         .tint(.brown)
                     }
+                    .padding(.top, 5)
                 }
 
             } compactLeading: {
-                // The left side of the "bubble"
                 Image(systemName: "drop.fill")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.orange)
             } compactTrailing: {
-                // The right side of the "bubble"
                 Text(context.state.startTime, style: .timer)
                     .monospacedDigit()
-                    .foregroundColor(.blue)
-                    .frame(width: 45) // Fixed width prevents the island from stretching
+                    .foregroundColor(.orange)
+                    .frame(width: 45)
             } minimal: {
-                // Shown when multiple apps have activities
                 Image(systemName: "drop.fill")
-                    .foregroundColor(.blue)
+                    .foregroundColor(.orange)
             }
         }
     }

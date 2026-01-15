@@ -1,56 +1,114 @@
-//
-//  DailyLogView.swift
-//  nurture-fox
-//
-//  Created by Tim OLeary on 1/9/26.
-//
-
-
 import SwiftUI
 import SwiftData
-import ActivityKit
 
 struct DailyLogView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \BabyEvent.timestamp, order: .reverse) private var allEvents: [BabyEvent]
     
-    // This automatically fetches and updates the list when data changes
-    @Query(sort: \BabyEvent.timestamp, order: .reverse) private var events: [BabyEvent]
+    // Goal Settings
+    @AppStorage("dailyOzGoal") private var dailyOzGoal: Double = 32.0
+    @State private var showGoalEditor = false
     
+    // Editing State
+    @State private var editingEvent: BabyEvent?
+    
+    // Filter for "Today" (00:00 to 23:59)
+    var todayEvents: [BabyEvent] {
+        let calendar = Calendar.current
+        return allEvents.filter { calendar.isDateInToday($0.timestamp) }
+    }
+    
+    // Standardized Math: 1 oz = 30 ml
+    var totalTodayOz: Float {
+        todayEvents.filter { $0.type == "FEED" }.reduce(0) { sum, event in
+            // Standardized conversion: ml / 30
+            sum + (event.subtype == "ml" ? event.amount / 30.0 : event.amount)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                ForEach(events) { event in
-                    HStack(spacing: 16) {
-                        // Icon based on type
-                        ZStack {
-                            Circle()
-                                .fill(event.type == "FEED" ? Color.blue.opacity(0.1) : Color.green.opacity(0.1))
-                                .frame(width: 40, height: 40)
-                            
-                            Image(systemName: event.type == "FEED" ? "mouth.fill" : "tent.fill")
-                                .foregroundColor(event.type == "FEED" ? .blue : .green)
-                        }
-                        
-                        VStack(alignment: .leading) {
-                            Text(event.type == "FEED" ? "Feed: \(event.amount, specifier: "%.1f") \(event.subtype)" : "Diaper: \(event.subtype)")
+                // --- GOALS SECTION ---
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Daily Goal")
                                 .font(.headline)
-                            
-                            Text(event.timestamp.formatted(date: .omitted, time: .shortened))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("\(Int(dailyOzGoal)) oz") {
+                                showGoalEditor = true
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(.blue)
                         }
                         
-                        Spacer()
+                        let progress = CGFloat(totalTodayOz) / CGFloat(dailyOzGoal)
+                        
+                        ProgressView(value: min(progress, 1.0))
+                            .tint(progress >= 1.0 ? .green : .blue)
+                        
+                        HStack {
+                            Text("\(String(format: "%.1f", totalTodayOz)) oz")
+                            Text("/")
+                                .foregroundStyle(.secondary)
+                            // Standardized conversion: oz * 30
+                            Text("\(Int(totalTodayOz * 30)) ml")
+                            Spacer()
+                            Text("\(Int(progress * 100))%")
+                                .bold()
+                        }
+                        .font(.caption)
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 5)
                 }
-                .onDelete(perform: deleteItems) // Swiping to delete
+                
+                // --- LOG ENTRIES ---
+                ForEach(allEvents) { event in
+                    Button {
+                        editingEvent = event
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(event.type == "FEED" ? "🍼 Feeding" : "💩 Diaper")
+                                    .fontWeight(.bold)
+                                    .foregroundColor(event.type == "FEED" ? .blue : .brown)
+                                
+                                if event.type == "FEED" {
+                                    // Calculate standard oz/ml display
+                                    let ozValue = event.subtype == "oz" ? event.amount : event.amount / 30.0
+                                    let mlValue = event.subtype == "ml" ? event.amount : event.amount * 30.0
+                                    
+                                    // Displays clean "oz / ml" format as per 12:51 screenshot
+                                    Text("\(String(format: "%.1f", ozValue)) oz / \(Int(mlValue)) ml")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                } else {
+                                    Text(event.subtype)
+                                        .font(.subheadline)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            Text(event.timestamp, style: .time)
+                                .foregroundStyle(.secondary)
+                                .font(.footnote)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+                .onDelete(perform: deleteItems)
             }
             .navigationTitle("Daily Log")
-            .overlay {
-                if events.isEmpty {
-                    ContentUnavailableView("No Logs Yet", systemImage: "list.bullet.rectangle.portrait", description: Text("Logged events will appear here."))
-                }
+            .sheet(item: $editingEvent) { event in
+                EditEventView(event: event)
+            }
+            .alert("Set Daily Goal (oz)", isPresented: $showGoalEditor) {
+                TextField("Goal", value: $dailyOzGoal, format: .number)
+                    .keyboardType(.decimalPad)
+                Button("Save", action: {})
+                Button("Cancel", role: .cancel, action: {})
             }
         }
     }
@@ -58,21 +116,7 @@ struct DailyLogView: View {
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
-                let event = events[index]
-                // If deleting a feed, kill the active timer
-                if event.type == "FEED" {
-                    endAllLiveActivities()
-                }
-                modelContext.delete(event)
-            }
-        }
-    }
-    
-    private func endAllLiveActivities() {
-        Task {
-            for activity in Activity<TimerAttributes>.activities {
-                // DismissalPolicy: .immediate makes it vanish instantly
-                await activity.end(nil, dismissalPolicy: .immediate)
+                modelContext.delete(allEvents[index])
             }
         }
     }

@@ -7,50 +7,86 @@
 
 import WidgetKit
 import SwiftUI
+import SwiftData
 
 struct Provider: AppIntentTimelineProvider {
+    // 1. Fetch the last feed timestamp from SwiftData
+    @MainActor
+    private func fetchLastFeedDate() -> Date {
+        // Use the same App Group identifier you set in Capabilities
+        let groupID = "group.toleary.nurture-fox"
+        let schema = Schema([BabyEvent.self])
+        let config = ModelConfiguration(groupContainer: .identifier(groupID))
+        
+        do {
+            let container = try ModelContainer(for: schema, configurations: config)
+            let descriptor = FetchDescriptor<BabyEvent>(
+                predicate: #Predicate { $0.type == "FEED" },
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            let events = try container.mainContext.fetch(descriptor)
+            return events.first?.timestamp ?? Date()
+        } catch {
+            return Date() // Fallback to now if fetch fails
+        }
+    }
+
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
+        SimpleEntry(date: Date(), lastFeedDate: Date(), configuration: ConfigurationAppIntent())
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
+        let lastFeed = await fetchLastFeedDate()
+        return SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
     }
     
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
+        let lastFeed = await fetchLastFeedDate()
+        
+        // Create one entry for right now
+        let entry = SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
 
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
-        }
-
-        return Timeline(entries: entries, policy: .atEnd)
+        // Refresh every 15 minutes to keep the data current
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
+    let lastFeedDate: Date // Added this to hold our baby data
     let configuration: ConfigurationAppIntent
 }
 
 struct NurtureFoxWidgetsEntryView : View {
     var entry: Provider.Entry
+    @Environment(\.widgetFamily) var family
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        switch family {
+        case .accessoryCircular: // Watch Face Circle
+            VStack(spacing: 0) {
+                Image(systemName: "bottle.fill")
+                    .font(.system(size: 10))
+                Text(entry.lastFeedDate, style: .relative)
+                    .font(.system(size: 12, weight: .bold))
+                    .multilineTextAlignment(.center)
+            }
+        case .accessoryInline: // Watch Face Text Line
+            Text("Last: \(entry.lastFeedDate, style: .relative) ago")
+        default: // Standard iPhone Widgets
+            VStack(alignment: .leading) {
+                Label("Last Fed", systemImage: "timer")
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                
+                Text(entry.lastFeedDate, style: .relative)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                
+                Text("at \(entry.lastFeedDate.formatted(date: .omitted, time: .shortened))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -63,26 +99,7 @@ struct NurtureFoxWidgets: Widget {
             NurtureFoxWidgetsEntryView(entry: entry)
                 .containerBackground(.fill.tertiary, for: .widget)
         }
+        // Enable both iPhone Widgets and Watch Face Complications
+        .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryInline, .accessoryRectangular])
     }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
-#Preview(as: .systemSmall) {
-    NurtureFoxWidgets()
-} timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
 }

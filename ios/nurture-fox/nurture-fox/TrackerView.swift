@@ -4,8 +4,6 @@ import ActivityKit
 
 struct TrackerView: View {
     @Environment(\.modelContext) private var modelContext
-    
-    // Sort events to find the most recent one for the Status Card
     @Query(sort: \BabyEvent.timestamp, order: .reverse) private var recentEvents: [BabyEvent]
     
     @State private var amountText: String = ""
@@ -19,7 +17,7 @@ struct TrackerView: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView { // Use ScrollView to ensure the card + form fit on smaller screens
+            ScrollView {
                 VStack(spacing: 24) {
                     Text("Nurture Fox")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
@@ -44,27 +42,41 @@ struct TrackerView: View {
                         .cornerRadius(24)
                     }
 
-                    // Date & Time Selection
-                    HStack {
-                        Text("Logging for:")
+                    // --- ENHANCED DATE & TIME SELECTION ---
+                    HStack(spacing: 12) {
+                        Label("Logging for:", systemImage: "clock.badge.checkmark")
                             .foregroundStyle(.secondary)
-                        
+                            .font(.subheadline)
+
                         Button {
                             showDatePicker = true
                         } label: {
-                            Text(customTimestamp?.formatted(date: .abbreviated, time: .shortened) ?? "Now")
-                                .fontWeight(.bold)
+                            HStack(spacing: 4) {
+                                Text(customTimestamp?.formatted(date: .abbreviated, time: .shortened) ?? "Now")
+                                    .fontWeight(.bold)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(customTimestamp == nil ? Color.gray.opacity(0.1) : Color.blue.opacity(0.1))
+                                    .cornerRadius(8)
+                                
+                                if customTimestamp != nil {
+                                    Image(systemName: "pencil")
+                                        .font(.caption)
+                                }
+                            }
                         }
-                        
+
                         if customTimestamp != nil {
                             Button {
                                 customTimestamp = nil
                             } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.red)
+                                Image(systemName: "arrow.counterclockwise.circle.fill")
+                                    .foregroundStyle(.red)
+                                    .font(.title3)
                             }
                         }
                     }
+                    .padding(.bottom, 8)
                     
                     // Amount Input
                     VStack(alignment: .leading) {
@@ -77,9 +89,7 @@ struct TrackerView: View {
                             .toolbar {
                                 ToolbarItemGroup(placement: .keyboard) {
                                     Spacer()
-                                    Button("Done") {
-                                        hideKeyboard()
-                                    }
+                                    Button("Done") { hideKeyboard() }
                                 }
                             }
                             .textFieldStyle(.roundedBorder)
@@ -114,12 +124,10 @@ struct TrackerView: View {
                 }
                 .padding()
             }
-            .onTapGesture { hideKeyboard() } // Dismiss keyboard on background tap
+            .onTapGesture { hideKeyboard() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSettings = true
-                    } label: {
+                    Button { showSettings = true } label: {
                         Image(systemName: "gearshape")
                     }
                 }
@@ -127,20 +135,54 @@ struct TrackerView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            // --- THE NEW SPLIT DATEPICKER SHEET ---
             .sheet(isPresented: $showDatePicker) {
                 NavigationStack {
-                    DatePicker("Select Date", selection: Binding(
-                        get: { customTimestamp ?? Date() },
-                        set: { customTimestamp = $0 }
-                    ))
-                    .datePickerStyle(.graphical)
+                    // Use a List or a ScrollView to give the content native spacing
+                    List {
+                        Section {
+                            HStack {
+                                Text("Time")
+                                Spacer()
+                                DatePicker(
+                                    "Select Time",
+                                    selection: Binding(
+                                        get: { customTimestamp ?? Date() },
+                                        set: { customTimestamp = $0 }
+                                    ),
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .datePickerStyle(.compact)
+                                .labelsHidden()
+                            }
+                        } footer: {
+                            Text("Adjust the time for this log entry.")
+                        }
+
+                        Section {
+                            DatePicker(
+                                "Select Date",
+                                selection: Binding(
+                                    get: { customTimestamp ?? Date() },
+                                    set: { customTimestamp = $0 }
+                                ),
+                                in: ...Date(),
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.graphical)
+                            .listRowInsets(EdgeInsets()) // Makes the calendar go edge-to-edge
+                        }
+                    }
+                    .navigationTitle("Adjust Time")
+                    .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { showDatePicker = false }
+                            .fontWeight(.bold)
                         }
                     }
                 }
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
             }
             .confirmationDialog("What type of diaper?", isPresented: $showDiaperSheet, titleVisibility: .visible) {
                 Button("Pee") { logDiaper(subtype: "Pee") }
@@ -164,7 +206,6 @@ struct TrackerView: View {
         )
         modelContext.insert(newEvent)
         
-        // Success Haptic Feedback
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
         
@@ -176,18 +217,12 @@ struct TrackerView: View {
     }
     
     private func startLiveActivity(startTime: Date) {
-        // 1. CLEANUP existing activities
         for activity in Activity<TimerAttributes>.activities {
-            Task {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
+            Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
 
-        // 2. PROCEED with the 4-hour staleDate polish
         let attributes = TimerAttributes(babyName: babyName)
         let state = TimerAttributes.ContentState(startTime: startTime)
-        
-        // Step 3 Polish: Define when the activity becomes "Old"
         let staleDate = Calendar.current.date(byAdding: .hour, value: 4, to: startTime)
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
         
@@ -197,17 +232,8 @@ struct TrackerView: View {
                 content: activityContent,
                 pushType: nil
             )
-            print("✅ New Activity Started with StaleDate")
         } catch {
             print("❌ Error: \(error.localizedDescription)")
-        }
-    }
-    
-    private func endAllLiveActivities() {
-        Task {
-            for activity in Activity<TimerAttributes>.activities {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
         }
     }
     
@@ -219,10 +245,7 @@ struct TrackerView: View {
             timestamp: customTimestamp ?? Date()
         )
         modelContext.insert(newEvent)
-        
-        // Gentle haptic for diaper log
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        
         customTimestamp = nil
     }
 }

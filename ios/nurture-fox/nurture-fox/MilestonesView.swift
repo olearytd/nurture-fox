@@ -1,11 +1,3 @@
-//
-//  MilestonesView.swift
-//  nurture-fox
-//
-//  Created by Tim OLeary on 1/9/26.
-//
-
-
 import SwiftUI
 import SwiftData
 
@@ -13,12 +5,14 @@ struct MilestonesView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Milestone.timestamp, order: .reverse) private var milestones: [Milestone]
     
-    // You would pull this from your Settings/UserDefaults
-    let babyBirthDate: Date = Calendar.current.date(byAdding: .month, value: -6, to: Date()) ?? Date()
+    // Links to your global baby birthday setting
+    @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
     
+    // Expanded options to match your Android list
     let options = [
         "First Smile", "First Laugh", "Rolling Over", "Sitting Up",
-        "First Solid Food", "Crawling", "First Word", "First Steps"
+        "First Solid Food", "Crawling", "First Word", "First Steps",
+        "Waving Bye-Bye", "Pulling to Stand", "First Tooth", "Walking"
     ]
     
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
@@ -58,44 +52,60 @@ struct MilestonesView: View {
                     if milestones.isEmpty {
                         ContentUnavailableView("No Memories Yet", systemImage: "star", description: Text("Tap a milestone above to save a memory."))
                     } else {
-                        ForEach(milestones) { milestone in
-                            HStack {
-                                Image(systemName: "star.circle.fill")
-                                    .foregroundStyle(.yellow)
-                                    .font(.title)
-                                
-                                VStack(alignment: .leading) {
-                                    Text(milestone.name)
-                                        .font(.headline)
-                                    Text("Accomplished at: \(milestone.ageAtOccurrence)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                        // Using a VStack instead of a List inside a ScrollView to avoid layout conflicts
+                        VStack(spacing: 12) {
+                            ForEach(milestones) { milestone in
+                                HStack {
+                                    Image(systemName: "star.circle.fill")
+                                        .foregroundStyle(.yellow)
+                                        .font(.title)
+                                    
+                                    VStack(alignment: .leading) {
+                                        Text(milestone.name)
+                                            .font(.headline)
+                                        Text("Accomplished at: \(milestone.ageAtOccurrence)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button(role: .destructive) {
+                                        modelContext.delete(milestone)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                            .foregroundStyle(.red)
+                                    }
                                 }
-                                
-                                Spacer()
-                                
-                                Button(role: .destructive) {
-                                    modelContext.delete(milestone)
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
+                                .padding()
+                                .background(Color(.secondarySystemBackground))
+                                .cornerRadius(12)
                             }
-                            .padding()
-                            .background(Color(.secondarySystemBackground))
-                            .cornerRadius(12)
-                            .padding(.horizontal)
                         }
+                        .padding(.horizontal)
                     }
                 }
+                .padding(.vertical)
             }
             .navigationTitle("Milestones")
         }
     }
     
     private func addMilestone(name: String) {
-        let age = calculateAge(from: babyBirthDate, to: Date())
-        let newMilestone = Milestone(name: name, timestamp: Date(), ageAtOccurrence: age)
+        let birthDate = Date(timeIntervalSince1970: babyBirthday)
+        let age = calculateAge(from: birthDate, to: Date())
+        
+        let newMilestone = Milestone(
+            name: name,
+            timestamp: Date(),
+            ageAtOccurrence: age
+        )
+        
         modelContext.insert(newMilestone)
+        
+        // Haptic feedback for a developmental win!
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
     }
     
     private func calculateAge(from: Date, to: Date) -> String {
@@ -107,7 +117,9 @@ struct MilestonesView: View {
         var ageString = ""
         if years > 0 { ageString += "\(years)y " }
         if months > 0 { ageString += "\(months)m " }
+        // Ensure we always show days, even if 0, for "Just Born" accuracy
         ageString += "\(days)d"
-        return ageString
+        
+        return ageString.isEmpty ? "0d" : ageString
     }
 }
