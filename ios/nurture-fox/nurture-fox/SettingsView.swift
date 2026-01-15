@@ -57,6 +57,16 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(accountStatus != .available)
+                    
+                    // Added: Emergency Reset for "Blank Screen" issues
+                    if activeShare != nil {
+                        Button(role: .destructive) {
+                            resetSharing()
+                        } label: {
+                            Text("Reset Sharing Connection")
+                                .font(.caption)
+                        }
+                    }
                 }
 
                 Section("Cloud Sync") {
@@ -80,9 +90,11 @@ struct SettingsView: View {
                     }
                     .onAppear {
                         checkCloudStatus()
-                        fetchExistingShare()
+                        // Wrap the async call in a Task
+                        Task {
+                            await fetchExistingShare()
+                        }
                     }
-                    // Listen for silent background syncs from the partner
                     .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
                         self.lastSyncTime = Date()
                     }
@@ -154,62 +166,81 @@ struct SettingsView: View {
 
     // --- SHARING LOGIC ---
         
-    private func fetchExistingShare() {
-        Task {
-            do {
-                let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
-                let database = container.privateCloudDatabase
-                let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
-                
-                let query = CKQuery(recordType: "cloudkit.share", predicate: NSPredicate(value: true))
-                let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
-                
-                if let firstResult = results.first {
-                    let recordResult = firstResult.1
-                    if case .success(let record) = recordResult, let share = record as? CKShare {
-                        await MainActor.run {
-                            self.activeShare = share
-                        }
+    private func fetchExistingShare() async {
+        do {
+            let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
+            let database = container.privateCloudDatabase
+            let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
+            
+            let query = CKQuery(recordType: "cloudkit.share", predicate: NSPredicate(value: true))
+            let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
+            
+            if let firstResult = results.first {
+                let recordResult = firstResult.1
+                if case .success(let record) = recordResult, let share = record as? CKShare {
+                    await MainActor.run {
+                        self.activeShare = share
                     }
                 }
-            } catch {
-                print("No existing share found in custom zone.")
             }
+        } catch {
+            print("Sharing: Fetch failed - \(error.localizedDescription)")
         }
     }
 
     private func initiateSharing() {
+        print("Sharing: Button Clicked")
         Task {
             let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
             let privateDB = container.privateCloudDatabase
             self.activeContainer = container
             
-            // 1. Create a Custom Zone ID (Sharing cannot happen in Default Zone)
             let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
             let customZone = CKRecordZone(zoneID: zoneID)
             
             do {
-                // 2. Save the Custom Zone to initialize it on server
+                // 1. Try to save zone and share
                 try await privateDB.save(customZone)
-                
-                // 3. Create/Prepare the Share in that Custom Zone
                 let share = CKShare(recordZoneID: zoneID)
                 share[CKShare.SystemFieldKey.title] = "Nurture Fox Family Data" as CKRecordValue
-                
-                // 4. Force save the share to server before presenting UI
                 try await privateDB.save(share)
                 
                 await MainActor.run {
                     self.activeShare = share
                     self.isSharingSheetPresented = true
+                    print("Sharing: New Share Created and Presented")
                 }
             } catch {
-                let ckError = error as? CKError
-                if ckError?.code == .serverRecordChanged || ckError?.code == .zoneBusy || ckError?.code == .alreadyShared {
-                    fetchExistingShare()
-                    await MainActor.run { self.isSharingSheetPresented = true }
-                } else {
-                    print("Critical Sharing Error: \(error.localizedDescription)")
+                print("Sharing: Initial save failed (likely exists), attempting fetch. Error: \(error.localizedDescription)")
+                
+                // 2. If save fails, we MUST fetch
+                await fetchExistingShare()
+                
+                // 3. Force the sheet to open after a short delay
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
+                
+                await MainActor.run {
+                    if self.activeShare != nil {
+                        self.isSharingSheetPresented = true
+                        print("Sharing: Existing Share Fetched and Presented")
+                    } else {
+                        print("Sharing: Critical Error - ActiveShare is still nil after fetch")
+                    }
+                }
+            }
+        }
+    }
+    
+    // NEW: Clean out a broken share so you can start fresh in Production
+    private func resetSharing() {
+        Task {
+            let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
+            let privateDB = container.privateCloudDatabase
+            if let share = activeShare {
+                try await privateDB.deleteRecord(withID: share.recordID)
+                await MainActor.run {
+                    self.activeShare = nil
+                    initiateSharing()
                 }
             }
         }
@@ -273,8 +304,6 @@ struct SettingsView: View {
         } catch { print("Import failed: \(error)") }
     }
 
-    // --- CLOUD STATUS UI HELPERS ---
-
     private var cloudStatusText: String {
         switch accountStatus {
         case .available: return "iCloud Synced"
@@ -303,13 +332,13 @@ struct SettingsView: View {
     private var cloudColor: Color { accountStatus == .available ? .green : .orange }
 }
 
-// --- CLOUDKIT UI WRAPPER ---
 struct CloudSharingView: UIViewControllerRepresentable {
     let share: CKShare
     let container: CKContainer
 
     func makeUIViewController(context: Context) -> UICloudSharingController {
         let controller = UICloudSharingController(share: share, container: container)
+        // CRITICAL: Permissions MUST include .allowPrivate for collaboration to work
         controller.availablePermissions = [.allowPublic, .allowPrivate, .allowReadWrite]
         return controller
     }
