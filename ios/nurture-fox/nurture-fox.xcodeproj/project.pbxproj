@@ -1,0 +1,1222 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D86EEAB12F1824C300A302A4 /* NurtureFoxWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D86EEA912F1824C100A302A4 /* NurtureFoxWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D89D144E2F1663B400FAE788 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D89D144D2F1663B400FAE788 /* WidgetKit.framework */; };
+		D89D14502F1663B400FAE788 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D89D144F2F1663B400FAE788 /* SwiftUI.framework */; };
+		D89D14612F1663B500FAE788 /* NurtureFoxWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D8422F3D2F11C1AC0010FAA3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D8422F2A2F11C1AB0010FAA3;
+			remoteInfo = "nurture-fox";
+		};
+		D8422F472F11C1AC0010FAA3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D8422F2A2F11C1AB0010FAA3;
+			remoteInfo = "nurture-fox";
+		};
+		D86EEA9E2F1824C200A302A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D86EEA902F1824C100A302A4;
+			remoteInfo = "NurtureFoxWatch Watch App";
+		};
+		D86EEAA82F1824C200A302A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D86EEA902F1824C100A302A4;
+			remoteInfo = "NurtureFoxWatch Watch App";
+		};
+		D86EEAAF2F1824C300A302A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D86EEA902F1824C100A302A4;
+			remoteInfo = "NurtureFoxWatch Watch App";
+		};
+		D89D145F2F1663B500FAE788 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D8422F232F11C1AB0010FAA3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D89D144A2F1663B400FAE788;
+			remoteInfo = NurtureFoxWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D86EEAB52F1824C300A302A4 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				D86EEAB12F1824C300A302A4 /* NurtureFoxWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D89D14622F1663B500FAE788 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D89D14612F1663B500FAE788 /* NurtureFoxWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D8422F2B2F11C1AB0010FAA3 /* nurture-fox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "nurture-fox.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8422F3C2F11C1AC0010FAA3 /* nurture-foxTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "nurture-foxTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "nurture-foxUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86EEA912F1824C100A302A4 /* NurtureFoxWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NurtureFoxWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86EEA9D2F1824C200A302A4 /* NurtureFoxWatch Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "NurtureFoxWatch Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86EEAA72F1824C200A302A4 /* NurtureFoxWatch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "NurtureFoxWatch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D86EEAC02F18271000A302A4 /* NurtureFoxWidgetsExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NurtureFoxWidgetsExtension.entitlements; sourceTree = "<group>"; };
+		D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NurtureFoxWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D89D144D2F1663B400FAE788 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		D89D144F2F1663B400FAE788 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D8422F4E2F11C1AC0010FAA3 /* Exceptions for "nurture-fox" folder in "nurture-fox" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
+		};
+		D86EEABD2F18254500A302A4 /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BabyEvent.swift,
+			);
+			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
+		};
+		D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+		};
+		D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BabyEvent.swift,
+				LogDiaperIntent.swift,
+				TimerAttributes.swift,
+			);
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D8422F2D2F11C1AB0010FAA3 /* nurture-fox */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D8422F4E2F11C1AC0010FAA3 /* Exceptions for "nurture-fox" folder in "nurture-fox" target */,
+				D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */,
+				D86EEABD2F18254500A302A4 /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */,
+			);
+			path = "nurture-fox";
+			sourceTree = "<group>";
+		};
+		D8422F3F2F11C1AC0010FAA3 /* nurture-foxTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "nurture-foxTests";
+			sourceTree = "<group>";
+		};
+		D8422F492F11C1AC0010FAA3 /* nurture-foxUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "nurture-foxUITests";
+			sourceTree = "<group>";
+		};
+		D86EEA922F1824C100A302A4 /* NurtureFoxWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "NurtureFoxWatch Watch App";
+			sourceTree = "<group>";
+		};
+		D86EEAA02F1824C200A302A4 /* NurtureFoxWatch Watch AppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "NurtureFoxWatch Watch AppTests";
+			sourceTree = "<group>";
+		};
+		D86EEAAA2F1824C300A302A4 /* NurtureFoxWatch Watch AppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "NurtureFoxWatch Watch AppUITests";
+			sourceTree = "<group>";
+		};
+		D89D14512F1663B400FAE788 /* NurtureFoxWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */,
+			);
+			path = NurtureFoxWidgets;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D8422F282F11C1AB0010FAA3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F392F11C1AC0010FAA3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F432F11C1AC0010FAA3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA8E2F1824C100A302A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA9A2F1824C200A302A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEAA42F1824C200A302A4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D89D14482F1663B400FAE788 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D89D14502F1663B400FAE788 /* SwiftUI.framework in Frameworks */,
+				D89D144E2F1663B400FAE788 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D8422F222F11C1AB0010FAA3 = {
+			isa = PBXGroup;
+			children = (
+				D86EEAC02F18271000A302A4 /* NurtureFoxWidgetsExtension.entitlements */,
+				D8422F2D2F11C1AB0010FAA3 /* nurture-fox */,
+				D8422F3F2F11C1AC0010FAA3 /* nurture-foxTests */,
+				D8422F492F11C1AC0010FAA3 /* nurture-foxUITests */,
+				D89D14512F1663B400FAE788 /* NurtureFoxWidgets */,
+				D86EEA922F1824C100A302A4 /* NurtureFoxWatch Watch App */,
+				D86EEAA02F1824C200A302A4 /* NurtureFoxWatch Watch AppTests */,
+				D86EEAAA2F1824C300A302A4 /* NurtureFoxWatch Watch AppUITests */,
+				D89D144C2F1663B400FAE788 /* Frameworks */,
+				D8422F2C2F11C1AB0010FAA3 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D8422F2C2F11C1AB0010FAA3 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D8422F2B2F11C1AB0010FAA3 /* nurture-fox.app */,
+				D8422F3C2F11C1AC0010FAA3 /* nurture-foxTests.xctest */,
+				D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */,
+				D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */,
+				D86EEA912F1824C100A302A4 /* NurtureFoxWatch Watch App.app */,
+				D86EEA9D2F1824C200A302A4 /* NurtureFoxWatch Watch AppTests.xctest */,
+				D86EEAA72F1824C200A302A4 /* NurtureFoxWatch Watch AppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D89D144C2F1663B400FAE788 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D89D144D2F1663B400FAE788 /* WidgetKit.framework */,
+				D89D144F2F1663B400FAE788 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D8422F2A2F11C1AB0010FAA3 /* nurture-fox */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8422F4F2F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-fox" */;
+			buildPhases = (
+				D8422F272F11C1AB0010FAA3 /* Sources */,
+				D8422F282F11C1AB0010FAA3 /* Frameworks */,
+				D8422F292F11C1AB0010FAA3 /* Resources */,
+				D89D14622F1663B500FAE788 /* Embed Foundation Extensions */,
+				D86EEAB52F1824C300A302A4 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D89D14602F1663B500FAE788 /* PBXTargetDependency */,
+				D86EEAB02F1824C300A302A4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D8422F2D2F11C1AB0010FAA3 /* nurture-fox */,
+			);
+			name = "nurture-fox";
+			packageProductDependencies = (
+			);
+			productName = "nurture-fox";
+			productReference = D8422F2B2F11C1AB0010FAA3 /* nurture-fox.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D8422F3B2F11C1AC0010FAA3 /* nurture-foxTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8422F542F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-foxTests" */;
+			buildPhases = (
+				D8422F382F11C1AC0010FAA3 /* Sources */,
+				D8422F392F11C1AC0010FAA3 /* Frameworks */,
+				D8422F3A2F11C1AC0010FAA3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D8422F3E2F11C1AC0010FAA3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D8422F3F2F11C1AC0010FAA3 /* nurture-foxTests */,
+			);
+			name = "nurture-foxTests";
+			packageProductDependencies = (
+			);
+			productName = "nurture-foxTests";
+			productReference = D8422F3C2F11C1AC0010FAA3 /* nurture-foxTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D8422F452F11C1AC0010FAA3 /* nurture-foxUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D8422F572F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-foxUITests" */;
+			buildPhases = (
+				D8422F422F11C1AC0010FAA3 /* Sources */,
+				D8422F432F11C1AC0010FAA3 /* Frameworks */,
+				D8422F442F11C1AC0010FAA3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D8422F482F11C1AC0010FAA3 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D8422F492F11C1AC0010FAA3 /* nurture-foxUITests */,
+			);
+			name = "nurture-foxUITests";
+			packageProductDependencies = (
+			);
+			productName = "nurture-foxUITests";
+			productReference = D8422F462F11C1AC0010FAA3 /* nurture-foxUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D86EEAB22F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch App" */;
+			buildPhases = (
+				D86EEA8D2F1824C100A302A4 /* Sources */,
+				D86EEA8E2F1824C100A302A4 /* Frameworks */,
+				D86EEA8F2F1824C100A302A4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D86EEA922F1824C100A302A4 /* NurtureFoxWatch Watch App */,
+			);
+			name = "NurtureFoxWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "NurtureFoxWatch Watch App";
+			productReference = D86EEA912F1824C100A302A4 /* NurtureFoxWatch Watch App.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D86EEA9C2F1824C200A302A4 /* NurtureFoxWatch Watch AppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D86EEAB62F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch AppTests" */;
+			buildPhases = (
+				D86EEA992F1824C200A302A4 /* Sources */,
+				D86EEA9A2F1824C200A302A4 /* Frameworks */,
+				D86EEA9B2F1824C200A302A4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D86EEA9F2F1824C200A302A4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D86EEAA02F1824C200A302A4 /* NurtureFoxWatch Watch AppTests */,
+			);
+			name = "NurtureFoxWatch Watch AppTests";
+			packageProductDependencies = (
+			);
+			productName = "NurtureFoxWatch Watch AppTests";
+			productReference = D86EEA9D2F1824C200A302A4 /* NurtureFoxWatch Watch AppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D86EEAA62F1824C200A302A4 /* NurtureFoxWatch Watch AppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D86EEAB92F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch AppUITests" */;
+			buildPhases = (
+				D86EEAA32F1824C200A302A4 /* Sources */,
+				D86EEAA42F1824C200A302A4 /* Frameworks */,
+				D86EEAA52F1824C200A302A4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D86EEAA92F1824C200A302A4 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D86EEAAA2F1824C300A302A4 /* NurtureFoxWatch Watch AppUITests */,
+			);
+			name = "NurtureFoxWatch Watch AppUITests";
+			packageProductDependencies = (
+			);
+			productName = "NurtureFoxWatch Watch AppUITests";
+			productReference = D86EEAA72F1824C200A302A4 /* NurtureFoxWatch Watch AppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D89D14652F1663B500FAE788 /* Build configuration list for PBXNativeTarget "NurtureFoxWidgetsExtension" */;
+			buildPhases = (
+				D89D14472F1663B400FAE788 /* Sources */,
+				D89D14482F1663B400FAE788 /* Frameworks */,
+				D89D14492F1663B400FAE788 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D89D14512F1663B400FAE788 /* NurtureFoxWidgets */,
+			);
+			name = NurtureFoxWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = NurtureFoxWidgetsExtension;
+			productReference = D89D144B2F1663B400FAE788 /* NurtureFoxWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D8422F232F11C1AB0010FAA3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					D8422F2A2F11C1AB0010FAA3 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					D8422F3B2F11C1AC0010FAA3 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D8422F2A2F11C1AB0010FAA3;
+					};
+					D8422F452F11C1AC0010FAA3 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D8422F2A2F11C1AB0010FAA3;
+					};
+					D86EEA902F1824C100A302A4 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					D86EEA9C2F1824C200A302A4 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D86EEA902F1824C100A302A4;
+					};
+					D86EEAA62F1824C200A302A4 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D86EEA902F1824C100A302A4;
+					};
+					D89D144A2F1663B400FAE788 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
+			};
+			buildConfigurationList = D8422F262F11C1AB0010FAA3 /* Build configuration list for PBXProject "nurture-fox" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D8422F222F11C1AB0010FAA3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D8422F2C2F11C1AB0010FAA3 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D8422F2A2F11C1AB0010FAA3 /* nurture-fox */,
+				D8422F3B2F11C1AC0010FAA3 /* nurture-foxTests */,
+				D8422F452F11C1AC0010FAA3 /* nurture-foxUITests */,
+				D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */,
+				D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */,
+				D86EEA9C2F1824C200A302A4 /* NurtureFoxWatch Watch AppTests */,
+				D86EEAA62F1824C200A302A4 /* NurtureFoxWatch Watch AppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D8422F292F11C1AB0010FAA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F3A2F11C1AC0010FAA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F442F11C1AC0010FAA3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA8F2F1824C100A302A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA9B2F1824C200A302A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEAA52F1824C200A302A4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D89D14492F1663B400FAE788 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D8422F272F11C1AB0010FAA3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F382F11C1AC0010FAA3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D8422F422F11C1AC0010FAA3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA8D2F1824C100A302A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEA992F1824C200A302A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D86EEAA32F1824C200A302A4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D89D14472F1663B400FAE788 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D8422F3E2F11C1AC0010FAA3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
+			targetProxy = D8422F3D2F11C1AC0010FAA3 /* PBXContainerItemProxy */;
+		};
+		D8422F482F11C1AC0010FAA3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
+			targetProxy = D8422F472F11C1AC0010FAA3 /* PBXContainerItemProxy */;
+		};
+		D86EEA9F2F1824C200A302A4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
+			targetProxy = D86EEA9E2F1824C200A302A4 /* PBXContainerItemProxy */;
+		};
+		D86EEAA92F1824C200A302A4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
+			targetProxy = D86EEAA82F1824C200A302A4 /* PBXContainerItemProxy */;
+		};
+		D86EEAB02F1824C300A302A4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
+			targetProxy = D86EEAAF2F1824C300A302A4 /* PBXContainerItemProxy */;
+		};
+		D89D14602F1663B500FAE788 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+			targetProxy = D89D145F2F1663B500FAE788 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D8422F502F11C1AC0010FAA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "nurture-fox/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Nurture Fox";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D8422F512F11C1AC0010FAA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "nurture-fox/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Nurture Fox";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D8422F522F11C1AC0010FAA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D8422F532F11C1AC0010FAA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D8422F552F11C1AC0010FAA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-foxTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/nurture-fox.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/nurture-fox";
+			};
+			name = Debug;
+		};
+		D8422F562F11C1AC0010FAA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-foxTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/nurture-fox.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/nurture-fox";
+			};
+			name = Release;
+		};
+		D8422F582F11C1AC0010FAA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-foxUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "nurture-fox";
+			};
+			name = Debug;
+		};
+		D8422F592F11C1AC0010FAA3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-foxUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "nurture-fox";
+			};
+			name = Release;
+		};
+		D86EEAB32F1824C300A302A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "NurtureFoxWatch Watch App/NurtureFoxWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Nurture Fox";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "toleary.nurture-fox";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
+			};
+			name = Debug;
+		};
+		D86EEAB42F1824C300A302A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "NurtureFoxWatch Watch App/NurtureFoxWatch Watch App.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Nurture Fox";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "toleary.nurture-fox";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.watchkitapp";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
+			};
+			name = Release;
+		};
+		D86EEAB72F1824C300A302A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.NurtureFoxWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NurtureFoxWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NurtureFoxWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		D86EEAB82F1824C300A302A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.NurtureFoxWatch-Watch-AppTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NurtureFoxWatch Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NurtureFoxWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		D86EEABA2F1824C300A302A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.NurtureFoxWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "NurtureFoxWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		D86EEABB2F1824C300A302A4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.NurtureFoxWatch-Watch-AppUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				TEST_TARGET_NAME = "NurtureFoxWatch Watch App";
+				WATCHOS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		D89D14632F1663B500FAE788 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NurtureFoxWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NurtureFoxWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.NurtureFoxWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D89D14642F1663B500FAE788 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = NurtureFoxWidgetsExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 18;
+				DEVELOPMENT_TEAM = LCM5FMVWQD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NurtureFoxWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "toleary.nurture-fox.NurtureFoxWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D8422F262F11C1AB0010FAA3 /* Build configuration list for PBXProject "nurture-fox" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8422F522F11C1AC0010FAA3 /* Debug */,
+				D8422F532F11C1AC0010FAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D8422F4F2F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-fox" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8422F502F11C1AC0010FAA3 /* Debug */,
+				D8422F512F11C1AC0010FAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D8422F542F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-foxTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8422F552F11C1AC0010FAA3 /* Debug */,
+				D8422F562F11C1AC0010FAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D8422F572F11C1AC0010FAA3 /* Build configuration list for PBXNativeTarget "nurture-foxUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D8422F582F11C1AC0010FAA3 /* Debug */,
+				D8422F592F11C1AC0010FAA3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D86EEAB22F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D86EEAB32F1824C300A302A4 /* Debug */,
+				D86EEAB42F1824C300A302A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D86EEAB62F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch AppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D86EEAB72F1824C300A302A4 /* Debug */,
+				D86EEAB82F1824C300A302A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D86EEAB92F1824C300A302A4 /* Build configuration list for PBXNativeTarget "NurtureFoxWatch Watch AppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D86EEABA2F1824C300A302A4 /* Debug */,
+				D86EEABB2F1824C300A302A4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D89D14652F1663B500FAE788 /* Build configuration list for PBXNativeTarget "NurtureFoxWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D89D14632F1663B500FAE788 /* Debug */,
+				D89D14642F1663B500FAE788 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D8422F232F11C1AB0010FAA3 /* Project object */;
+}

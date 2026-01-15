@@ -1,0 +1,13 @@
+Copyright (c) 2026 [Your Name / Nurture Fox]. All rights reserved.
+
+This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 
+International License. To view a copy of this license, visit 
+http://creativecommons.org/licenses/by-nc/4.0/
+
+Under this license, you are free to:
+- Share: Copy and redistribute the material in any medium or format.
+- Adapt: Remix, transform, and build upon the material.
+
+Under the following terms:
+- Attribution: You must give appropriate credit and provide a link to the license.
+- Non-Commercial: You may not use the material for commercial purposes.
