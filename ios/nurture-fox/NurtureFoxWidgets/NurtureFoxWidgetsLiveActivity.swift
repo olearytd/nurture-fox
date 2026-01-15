@@ -19,16 +19,17 @@ struct NurtureFoxLiveActivity: Widget {
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
                         
+                        // Added .id() to force the Lock Screen to recognize the timer as "live"
                         Text(context.state.startTime, style: .timer)
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .monospacedDigit()
-                            // Using primary color for maximum contrast
                             .foregroundColor(.primary)
+                            .id(context.state.startTime)
                     }
                     
                     Spacer()
                     
-                    // Bottle Icon - using a softer blue but keeping it prominent
+                    // Bottle Icon
                     Image(systemName: "drop.fill")
                         .font(.title)
                         .foregroundStyle(.blue.gradient)
@@ -39,10 +40,8 @@ struct NurtureFoxLiveActivity: Widget {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            // Use 'System Material' to blur the wallpaper behind the text
             .activityBackgroundTint(Color.clear)
             .activitySystemActionForegroundColor(.primary)
-            // This is the magic modifier for readability:
             .background(.ultraThinMaterial)
 
         } dynamicIsland: { context in

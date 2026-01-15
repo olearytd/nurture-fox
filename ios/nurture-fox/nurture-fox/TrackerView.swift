@@ -223,7 +223,7 @@ struct TrackerView: View {
 
         let attributes = TimerAttributes(babyName: babyName)
         let state = TimerAttributes.ContentState(startTime: startTime)
-        let staleDate = Calendar.current.date(byAdding: .hour, value: 4, to: startTime)
+        let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime) 
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
         
         do {
