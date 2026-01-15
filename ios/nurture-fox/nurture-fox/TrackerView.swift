@@ -1,6 +1,8 @@
 import SwiftUI
 import SwiftData
 import ActivityKit
+import Combine
+import CoreData
 
 struct TrackerView: View {
     @Environment(\.modelContext) private var modelContext
@@ -39,7 +41,6 @@ struct TrackerView: View {
                             Text("\(lastFeed.amount, specifier: "%.1f") \(lastFeed.subtype) at \(lastFeed.timestamp.formatted(date: .omitted, time: .shortened))")
                                 .font(.subheadline)
                             
-                            // Restart Button on Card (Only if feed is < 8 hours old)
                             if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
                                 Button {
                                     startLiveActivity(startTime: lastFeed.timestamp)
@@ -188,6 +189,14 @@ struct TrackerView: View {
                     }
                 }
             }
+            // --- SYNC LISTENERS ---
+            .onAppear {
+                refreshTimerIfNecessary()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
+                // Triggers when CloudKit finishes a sync while app is active
+                refreshTimerIfNecessary()
+            }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
@@ -244,7 +253,6 @@ struct TrackerView: View {
                 Button("Both") { logDiaper(subtype: "Both") }
                 Button("Cancel", role: .cancel) { }
             }
-            // --- TOAST OVERLAY ---
             .overlay(alignment: .bottom) {
                 if showToast {
                     Text(toastMessage)
@@ -265,7 +273,26 @@ struct TrackerView: View {
         }
     }
     
-    // Logic Functions
+    // --- TIMER SYNC LOGIC ---
+    private func refreshTimerIfNecessary() {
+        guard let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) else { return }
+        
+        // Check if there's an active Live Activity
+        if let currentActivity = Activity<TimerAttributes>.activities.first {
+            let currentStartTime = currentActivity.content.state.startTime
+            
+            // If cloud data has a feed more than 10 seconds different than our current timer
+            if abs(lastFeed.timestamp.timeIntervalSince(currentStartTime)) > 10 {
+                startLiveActivity(startTime: lastFeed.timestamp)
+            }
+        } else {
+            // If no timer is running, but a feed happened recently (< 8 hours)
+            if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
+                startLiveActivity(startTime: lastFeed.timestamp)
+            }
+        }
+    }
+
     private func logFeed() {
         let amount = Float(amountText) ?? 0.0
         let timestamp = customTimestamp ?? Date()
@@ -289,7 +316,6 @@ struct TrackerView: View {
     }
     
     private func startLiveActivity(startTime: Date) {
-        // Kill existing activities first
         for activity in Activity<TimerAttributes>.activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
@@ -306,12 +332,10 @@ struct TrackerView: View {
                 pushType: nil
             )
             
-            // Trigger Success Toast
             toastMessage = "Live Activity Started"
             withAnimation(.spring()) {
                 showToast = true
             }
-            
         } catch {
             print("❌ Error: \(error.localizedDescription)")
             toastMessage = "Error starting Activity"
@@ -333,11 +357,7 @@ struct TrackerView: View {
 }
 
 extension View {
-
     func hideKeyboard() {
-
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-
     }
-
 }
