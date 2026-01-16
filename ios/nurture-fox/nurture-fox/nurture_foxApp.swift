@@ -52,7 +52,7 @@ struct nurture_foxApp: App {
             ZStack {
                 ContentView()
                     .preferredColorScheme(scheme)
-                    .disabled(isJoiningFamily) // Prevent interaction while joining
+                    .disabled(isJoiningFamily)
                 
                 // --- JOINING SPINNER ---
                 if isJoiningFamily {
@@ -79,7 +79,6 @@ struct nurture_foxApp: App {
 
     // --- ACCEPTANCE LOGIC ---
     private func acceptInvitation(url: URL) {
-        // Use explicit container to match SettingsView
         let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
         isJoiningFamily = true
         

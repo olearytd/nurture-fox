@@ -58,7 +58,6 @@ struct SettingsView: View {
                     }
                     .disabled(accountStatus != .available)
                     
-                    // Added: Emergency Reset for "Blank Screen" issues
                     if activeShare != nil {
                         Button(role: .destructive) {
                             resetSharing()
@@ -90,7 +89,6 @@ struct SettingsView: View {
                     }
                     .onAppear {
                         checkCloudStatus()
-                        // Wrap the async call in a Task
                         Task {
                             await fetchExistingShare()
                         }
@@ -199,7 +197,6 @@ struct SettingsView: View {
             let customZone = CKRecordZone(zoneID: zoneID)
             
             do {
-                // 1. Try to save zone and share
                 try await privateDB.save(customZone)
                 let share = CKShare(recordZoneID: zoneID)
                 share[CKShare.SystemFieldKey.title] = "Nurture Fox Family Data" as CKRecordValue
@@ -213,10 +210,8 @@ struct SettingsView: View {
             } catch {
                 print("Sharing: Initial save failed (likely exists), attempting fetch. Error: \(error.localizedDescription)")
                 
-                // 2. If save fails, we MUST fetch
                 await fetchExistingShare()
                 
-                // 3. Force the sheet to open after a short delay
                 try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
                 
                 await MainActor.run {
@@ -231,7 +226,6 @@ struct SettingsView: View {
         }
     }
     
-    // NEW: Clean out a broken share so you can start fresh in Production
     private func resetSharing() {
         Task {
             let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
@@ -338,7 +332,6 @@ struct CloudSharingView: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UICloudSharingController {
         let controller = UICloudSharingController(share: share, container: container)
-        // CRITICAL: Permissions MUST include .allowPrivate for collaboration to work
         controller.availablePermissions = [.allowPublic, .allowPrivate, .allowReadWrite]
         return controller
     }

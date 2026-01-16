@@ -10,7 +10,6 @@ import SwiftUI
 import SwiftData
 
 struct Provider: AppIntentTimelineProvider {
-    // 1. Fetch the last feed timestamp from SwiftData
     @MainActor
     private func fetchLastFeedDate() -> Date {
         // Use the same App Group identifier you set in Capabilities
@@ -43,7 +42,6 @@ struct Provider: AppIntentTimelineProvider {
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         let lastFeed = await fetchLastFeedDate()
         
-        // Create one entry for right now
         let entry = SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
 
         // Refresh every 15 minutes to keep the data current
@@ -54,7 +52,7 @@ struct Provider: AppIntentTimelineProvider {
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let lastFeedDate: Date // Added this to hold our baby data
+    let lastFeedDate: Date
     let configuration: ConfigurationAppIntent
 }
 
@@ -72,9 +70,9 @@ struct NurtureFoxWidgetsEntryView : View {
                     .font(.system(size: 12, weight: .bold))
                     .multilineTextAlignment(.center)
             }
-        case .accessoryInline: // Watch Face Text Line
+        case .accessoryInline:
             Text("Last: \(entry.lastFeedDate, style: .relative) ago")
-        default: // Standard iPhone Widgets
+        default: 
             VStack(alignment: .leading) {
                 Label("Last Fed", systemImage: "timer")
                     .font(.headline)

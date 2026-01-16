@@ -11,10 +11,8 @@ import ActivityKit
 
 struct TimerAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        // Dynamic data: things that change (like the start time)
         var startTime: Date
     }
 
-    // Static data: things that don't change (like the baby's name)
     var babyName: String
 }

@@ -51,7 +51,6 @@ struct WatchContentView: View {
                 }
             }
             .navigationTitle("Fox")
-            // The Watch version of your Phone's confirmation dialog
             .confirmationDialog("Diaper Type", isPresented: $showDiaperOptions) {
                 Button("Pee") { logDiaper(subtype: "Pee") }
                 Button("Poop") { logDiaper(subtype: "Poop") }

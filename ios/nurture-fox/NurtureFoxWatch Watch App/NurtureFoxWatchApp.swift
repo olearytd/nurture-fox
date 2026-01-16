@@ -10,7 +10,6 @@ import SwiftData
 
 @main
 struct NurtureFoxWatch_Watch_AppApp: App {
-    // 1. Create the same shared container logic as the Phone
     var sharedModelContainer: ModelContainer = {
         let groupID = "group.toleary.nurture-fox" // Must match the phone exactly
         let schema = Schema([
@@ -28,7 +27,7 @@ struct NurtureFoxWatch_Watch_AppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            WatchContentView() // Ensure this matches your Watch Content View name
+            WatchContentView() 
         }
         .modelContainer(sharedModelContainer)
     }
