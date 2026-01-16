@@ -161,7 +161,6 @@ struct TrendsView: View {
     }
 }
 
-// 2. EXTRACTION
 struct TrendsContentView: View {
     let todayEvents: [BabyEvent]
     let baselineStats: (vol: Float, diapers: Float, activeDays: Int)
@@ -259,7 +258,6 @@ struct TrendsContentView: View {
     }
 }
 
-// 3. SUPPORTING COMPONENTS
 struct MilestoneCard: View {
     let title: String; let value: String; let unit: String; let icon: String; let color: Color
     var body: some View {

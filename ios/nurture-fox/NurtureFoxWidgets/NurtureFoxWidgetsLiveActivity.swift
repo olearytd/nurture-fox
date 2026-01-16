@@ -18,8 +18,6 @@ struct NurtureFoxLiveActivity: Widget {
                             .font(.caption.bold())
                             .foregroundStyle(.secondary)
                         
-                        // Using context.state.startTime is correct
-                        // We keep the .id() to ensure it treats it as a fresh timer
                         Text(context.state.startTime, style: .timer)
                             .font(.system(size: 38, weight: .bold, design: .rounded))
                             .monospacedDigit()

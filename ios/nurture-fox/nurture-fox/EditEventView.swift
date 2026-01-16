@@ -24,7 +24,6 @@ struct EditEventView: View {
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 100)
-                            // Standardized Math: Conversion logic when user toggles unit
                             .onChange(of: event.subtype) { oldUnit, newUnit in
                                 if newUnit == "ml" && oldUnit == "oz" {
                                     event.amount *= 30

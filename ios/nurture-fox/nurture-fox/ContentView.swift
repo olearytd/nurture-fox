@@ -32,8 +32,6 @@ struct ContentView: View {
         }
         // Force the environment into the TabView children explicitly
         .environment(\.modelContext, modelContext)
-        // This 'id' trick prevents the EXC_BAD_ACCESS by resetting the
-        // view lifecycle if the data context becomes stale.
         .id(selectedTab)
     }
 }

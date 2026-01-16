@@ -194,7 +194,6 @@ struct TrackerView: View {
                 refreshTimerIfNecessary()
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
-                // Triggers when CloudKit finishes a sync while app is active
                 refreshTimerIfNecessary()
             }
             .sheet(isPresented: $showSettings) {

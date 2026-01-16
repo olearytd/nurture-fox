@@ -8,7 +8,6 @@ struct MilestonesView: View {
     // Links to your global baby birthday setting
     @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
     
-    // Expanded options to match your Android list
     let options = [
         "First Smile", "First Laugh", "Rolling Over", "Sitting Up",
         "First Solid Food", "Crawling", "First Word", "First Steps",
@@ -52,7 +51,6 @@ struct MilestonesView: View {
                     if milestones.isEmpty {
                         ContentUnavailableView("No Memories Yet", systemImage: "star", description: Text("Tap a milestone above to save a memory."))
                     } else {
-                        // Using a VStack instead of a List inside a ScrollView to avoid layout conflicts
                         VStack(spacing: 12) {
                             ForEach(milestones) { milestone in
                                 HStack {
@@ -103,7 +101,6 @@ struct MilestonesView: View {
         
         modelContext.insert(newMilestone)
         
-        // Haptic feedback for a developmental win!
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
     }
