@@ -97,33 +97,36 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		D8422F4E2F11C1AC0010FAA3 /* Exceptions for "nurture-fox" folder in "nurture-fox" target */ = {
+		D81C735A2F1A64A500E4C9EF /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BabyEvent.swift,
+				Item.swift,
+				LogDiaperIntent.swift,
+				MilestonesView.swift,
+				TimerAttributes.swift,
+			);
+			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
+		};
+		D81C735B2F1A64A500E4C9EF /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				BabyEvent.swift,
+				Item.swift,
+			);
+			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
+		};
+		D81C73622F1A65EF00E4C9EF /* Exceptions for "nurture-fox" folder in "nurture-fox" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
 			target = D8422F2A2F11C1AB0010FAA3 /* nurture-fox */;
 		};
-		D86EEABD2F18254500A302A4 /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				BabyEvent.swift,
-			);
-			target = D86EEA902F1824C100A302A4 /* NurtureFoxWatch Watch App */;
-		};
-		D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */ = {
+		D880F5072F1A665900799614 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-			);
-			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
-		};
-		D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				BabyEvent.swift,
-				LogDiaperIntent.swift,
-				TimerAttributes.swift,
 			);
 			target = D89D144A2F1663B400FAE788 /* NurtureFoxWidgetsExtension */;
 		};
@@ -133,9 +136,9 @@
 		D8422F2D2F11C1AB0010FAA3 /* nurture-fox */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D8422F4E2F11C1AC0010FAA3 /* Exceptions for "nurture-fox" folder in "nurture-fox" target */,
-				D89D146C2F1665BA00FAE788 /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */,
-				D86EEABD2F18254500A302A4 /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */,
+				D81C73622F1A65EF00E4C9EF /* Exceptions for "nurture-fox" folder in "nurture-fox" target */,
+				D81C735A2F1A64A500E4C9EF /* Exceptions for "nurture-fox" folder in "NurtureFoxWidgetsExtension" target */,
+				D81C735B2F1A64A500E4C9EF /* Exceptions for "nurture-fox" folder in "NurtureFoxWatch Watch App" target */,
 			);
 			path = "nurture-fox";
 			sourceTree = "<group>";
@@ -168,7 +171,7 @@
 		D89D14512F1663B400FAE788 /* NurtureFoxWidgets */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				D89D14662F1663B500FAE788 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */,
+				D880F5072F1A665900799614 /* Exceptions for "NurtureFoxWidgets" folder in "NurtureFoxWidgetsExtension" target */,
 			);
 			path = NurtureFoxWidgets;
 			sourceTree = "<group>";
