@@ -9,8 +9,15 @@ struct DailyVolume: Identifiable {
     let volume: Float
 }
 
+enum TrendWindow: String, CaseIterable, Identifiable {
+    case last7 = "7 Days"
+    case allTime = "All Time"
+    var id: Self { self }
+}
+
 struct TrendsView: View {
     @Query(sort: \BabyEvent.timestamp, order: .forward) private var allEvents: [BabyEvent]
+    @State private var selectedWindow: TrendWindow = .last7
     
     // --- THE BRAIN (Computed Properties) ---
     
@@ -25,52 +32,49 @@ struct TrendsView: View {
         return event.amount
     }
 
-    // Logic for the comparison section: Pro-rated by time and ignores empty days
+    // New: Calculate total days used in the app
+    private var totalActiveDays: Int {
+        let calendar = Calendar.current
+        let dates = Set(allEvents.map { calendar.startOfDay(for: $0.timestamp) })
+        return max(1, dates.count)
+    }
+
+    // Logic for comparison: Pro-rated by time
     private var baselineStats: (vol: Float, diapers: Float, activeDays: Int) {
         let calendar = Calendar.current
         let now = Date()
         let currentComponents = calendar.dateComponents([.hour, .minute], from: now)
-        
         var totalHistoricalVol: Float = 0
         var totalHistoricalDiapers: Float = 0
         var activeDaysCount: Int = 0
         
-        let lookbackDays = 7
-        
-        for i in 1...lookbackDays {
+        for i in 1...7 {
             if let targetDate = calendar.date(byAdding: .day, value: -i, to: now) {
                 let dayEvents = allEvents.filter { calendar.isDate($0.timestamp, inSameDayAs: targetDate) }
-                
                 if !dayEvents.isEmpty {
                     activeDaysCount += 1
-                    let startOfDay = calendar.startOfDay(for: targetDate)
                     let cutoffDate = calendar.date(bySettingHour: currentComponents.hour ?? 23,
-                                                   minute: currentComponents.minute ?? 59,
-                                                   second: 0,
-                                                   of: targetDate) ?? targetDate
+                                                 minute: currentComponents.minute ?? 59,
+                                                 second: 0,
+                                                 of: targetDate) ?? targetDate
                     
                     let dayFeeds = dayEvents.filter { $0.type == "FEED" && $0.timestamp <= cutoffDate }
                     let dayDiapers = dayEvents.filter { $0.type == "DIAPER" && $0.timestamp <= cutoffDate }
-                    
                     totalHistoricalVol += dayFeeds.reduce(0) { $0 + getOzAmount($1) }
                     totalHistoricalDiapers += Float(dayDiapers.count)
                 }
             }
         }
-        
         let denominator = Float(max(1, activeDaysCount))
         return (totalHistoricalVol / denominator, totalHistoricalDiapers / denominator, activeDaysCount)
     }
 
-    // Milestones & Records Logic
     private var milestones: (maxDayVol: Float, maxBottle: Float, longestStretch: Double) {
         let calendar = Calendar.current
         let groupedByDay = Dictionary(grouping: feedingEvents) { calendar.startOfDay(for: $0.timestamp) }
         let dailyTotals = groupedByDay.values.map { $0.reduce(0) { $0 + getOzAmount($1) } }
-        
         let maxDay = dailyTotals.max() ?? 0
         let maxBottle = feedingEvents.map { getOzAmount($0) }.max() ?? 0
-        
         var maxStretch: Double = 0
         let sortedFeeds = feedingEvents.sorted { $0.timestamp < $1.timestamp }
         if sortedFeeds.count > 1 {
@@ -89,12 +93,6 @@ struct TrendsView: View {
         return String(format: "%.1f hours", totalHours / Double(sortedFeeds.count - 1))
     }
 
-    private func volSince(days: Int) -> String {
-        let date = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-        let vol = feedingEvents.filter { $0.timestamp >= date }.reduce(0) { $0 + getOzAmount($1) }
-        return String(format: "%.0f oz", vol)
-    }
-
     var last7DaysTotals: [DailyVolume] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -108,19 +106,31 @@ struct TrendsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                TrendsContentView(
-                    todayEvents: todayEvents,
-                    baselineStats: baselineStats,
-                    last7DaysTotals: last7DaysTotals,
-                    feedingEvents: feedingEvents,
-                    diaperEvents: diaperEvents,
-                    averageInterval: averageInterval,
-                    volSince: volSince,
-                    getOzAmount: getOzAmount,
-                    allEvents: allEvents,
-                    milestones: milestones
-                )
-                .padding()
+                VStack(spacing: 16) {
+                    // NEW: Toggle Switcher
+                    Picker("Time Window", selection: $selectedWindow) {
+                        ForEach(TrendWindow.allCases) { window in
+                            Text(window.rawValue).tag(window)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+
+                    TrendsContentView(
+                        selectedWindow: selectedWindow,
+                        todayEvents: todayEvents,
+                        baselineStats: baselineStats,
+                        last7DaysTotals: last7DaysTotals,
+                        feedingEvents: feedingEvents,
+                        diaperEvents: diaperEvents,
+                        averageInterval: averageInterval,
+                        allEvents: allEvents,
+                        milestones: milestones,
+                        totalActiveDays: totalActiveDays,
+                        getOzAmount: getOzAmount
+                    )
+                    .padding()
+                }
             }
             .navigationTitle("Trends")
             .background(Color(.systemGroupedBackground))
@@ -137,19 +147,18 @@ struct TrendsView: View {
     @MainActor
     private func renderTrendsToImage() -> URL {
         let shareView = TrendsContentView(
+            selectedWindow: selectedWindow,
             todayEvents: todayEvents,
             baselineStats: baselineStats,
             last7DaysTotals: last7DaysTotals,
             feedingEvents: feedingEvents,
             diaperEvents: diaperEvents,
             averageInterval: averageInterval,
-            volSince: volSince,
-            getOzAmount: getOzAmount,
             allEvents: allEvents,
-            milestones: milestones
-        )
-        .frame(width: 400)
-        .background(Color(.systemGroupedBackground))
+            milestones: milestones,
+            totalActiveDays: totalActiveDays,
+            getOzAmount: getOzAmount
+        ).frame(width: 400).background(Color(.systemGroupedBackground))
 
         let renderer = ImageRenderer(content: shareView)
         renderer.scale = 3.0
@@ -162,21 +171,33 @@ struct TrendsView: View {
 }
 
 struct TrendsContentView: View {
+    let selectedWindow: TrendWindow
     let todayEvents: [BabyEvent]
     let baselineStats: (vol: Float, diapers: Float, activeDays: Int)
     let last7DaysTotals: [DailyVolume]
     let feedingEvents: [BabyEvent]
     let diaperEvents: [BabyEvent]
     let averageInterval: String
-    let volSince: (Int) -> String
-    let getOzAmount: (BabyEvent) -> Float
     let allEvents: [BabyEvent]
     let milestones: (maxDayVol: Float, maxBottle: Float, longestStretch: Double)
+    let totalActiveDays: Int
+    let getOzAmount: (BabyEvent) -> Float
+
+    // Dynamic Logic based on toggle
+    private var filteredFeedingEvents: [BabyEvent] {
+        if selectedWindow == .allTime { return feedingEvents }
+        let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
+        return feedingEvents.filter { $0.timestamp >= cutoff }
+    }
+
+    private var currentDayCount: Float {
+        selectedWindow == .allTime ? Float(totalActiveDays) : 7.0
+    }
 
     var body: some View {
         VStack(spacing: 20) {
             
-            // 1. All-Time Records (Milestones)
+            // 1. All-Time Records (Always all-time)
             TrendSection(title: "All-Time Records") {
                 HStack(spacing: 15) {
                     MilestoneCard(title: "Max Day", value: String(format: "%.1f", milestones.maxDayVol), unit: "oz", icon: "trophy.fill", color: .yellow)
@@ -186,7 +207,7 @@ struct TrendsContentView: View {
             }
 
             // 2. Baseline Comparison
-            TrendSection(title: "7-Day Baseline Comparison") {
+            TrendSection(title: "Today vs Baseline") {
                 let todayVol = todayEvents.reduce(0) { $0 + getOzAmount($1) }
                 let volDiff = todayVol - baselineStats.vol
                 TrendRow(label: "Vol Today", value: String(format: "%.1f oz", todayVol))
@@ -206,7 +227,7 @@ struct TrendsContentView: View {
                         .font(.caption.bold())
                         .foregroundColor(diaperDiff >= 0 ? .green : .red)
                     Spacer()
-                    Text("Based on \(baselineStats.activeDays) active days").font(.caption2).foregroundStyle(.secondary)
+                    Text("Based on \(baselineStats.activeDays) days").font(.caption2).foregroundStyle(.secondary)
                 }
             }
 
@@ -218,45 +239,40 @@ struct TrendsContentView: View {
                             .foregroundStyle(Color.blue.gradient)
                             .cornerRadius(6)
                     }
-                    let dayCount = Float(max(1, baselineStats.activeDays))
-                    let totalVol = feedingEvents.reduce(0) { $0 + getOzAmount($1) }
-                    RuleMark(y: .value("Avg", totalVol / dayCount))
+                    // The line always reflects the selected window's average
+                    let totalOz = filteredFeedingEvents.reduce(0) { $0 + getOzAmount($1) }
+                    RuleMark(y: .value("Avg", totalOz / currentDayCount))
                         .lineStyle(StrokeStyle(lineWidth: 2, dash: [5]))
                         .foregroundStyle(.secondary)
                 }
                 .frame(height: 180)
             }
 
-            // 4. Historical Summary
-            TrendSection(title: "Historical Summary") {
-                TrendRow(label: "Last 7 Days Total", value: volSince(7))
-                TrendRow(label: "Last 14 Days Total", value: volSince(14))
-                TrendRow(label: "Last 30 Days Total", value: volSince(30))
+            // 4. Feeding Patterns (FIXED MATH)
+            TrendSection(title: "Feeding Patterns (\(selectedWindow.rawValue))") {
+                let totalOz = filteredFeedingEvents.reduce(0) { $0 + getOzAmount($1) }
+                let bottleCount = filteredFeedingEvents.count
+                
+                TrendRow(label: "Daily Average", value: String(format: "%.1f oz", totalOz / currentDayCount))
+                TrendRow(label: "Bottles per Day", value: String(format: "%.1f", Float(bottleCount) / currentDayCount))
+                TrendRow(label: "Avg. per Bottle", value: String(format: "%.1f oz", totalOz / Float(max(1, bottleCount))))
             }
 
-            // 5. Feeding Patterns
-            TrendSection(title: "Feeding Patterns") {
-                let dayCount = Float(max(1, baselineStats.activeDays))
+            // 5. Historical Summary
+            TrendSection(title: "Historical Totals") {
                 let totalOz = feedingEvents.reduce(0) { $0 + getOzAmount($1) }
-                TrendRow(label: "Daily Average", value: String(format: "%.1f oz", totalOz / dayCount))
-                TrendRow(label: "Bottles per Day", value: String(format: "%.1f", Float(feedingEvents.count) / dayCount))
-                TrendRow(label: "Avg. per Bottle", value: String(format: "%.1f oz", totalOz / Float(max(1, feedingEvents.count))))
+                TrendRow(label: "All-Time Volume", value: String(format: "%.0f oz", totalOz))
+                TrendRow(label: "All-Time Diapers", value: "\(diaperEvents.count)")
+                TrendRow(label: "Days Active", value: "\(totalActiveDays)")
             }
 
-            // 6. Diaper History
-            TrendSection(title: "Diaper History") {
-                TrendRow(label: "Total Changes", value: "\(diaperEvents.count)")
-                TrendRow(label: "Total Pees", value: "\(diaperEvents.filter { $0.subtype.contains("Pee") || $0.subtype == "Both" }.count)")
-                TrendRow(label: "Total Poops", value: "\(diaperEvents.filter { $0.subtype.contains("Poop") || $0.subtype == "Both" }.count)")
-            }
-
-            // 7. Intervals
             TrendSection(title: "Intervals") {
                 TrendRow(label: "Avg. Time Between Feeds", value: averageInterval)
             }
         }
     }
 }
+// ... [Remaining UI components MilestoneCard, TrendSection, TrendRow stay the same]
 
 struct MilestoneCard: View {
     let title: String; let value: String; let unit: String; let icon: String; let color: Color

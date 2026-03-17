@@ -7,40 +7,40 @@ import CoreData
 struct TrackerView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \BabyEvent.timestamp, order: .reverse) private var recentEvents: [BabyEvent]
-    
+
     @State private var amountText: String = ""
     @State private var isOz: Bool = true
     @State private var showDiaperSheet: Bool = false
     @State private var customTimestamp: Date? = nil
     @State private var showDatePicker: Bool = false
     @State private var showSettings = false
-    
+
     // Toast States
     @State private var showToast: Bool = false
     @State private var toastMessage: String = ""
-    
+
     @AppStorage("babyName") private var babyName: String = "Baby"
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
                     Text("Nurture Fox")
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                    
+
                     // --- LAST FED STATUS CARD ---
                     if let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) {
                         VStack(spacing: 8) {
                             Text("LAST FED")
                                 .font(.caption.bold())
                                 .opacity(0.7)
-                            
+
                             Text(lastFeed.timestamp, style: .relative)
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                            
+
                             Text("\(lastFeed.amount, specifier: "%.1f") \(lastFeed.subtype) at \(lastFeed.timestamp.formatted(date: .omitted, time: .shortened))")
                                 .font(.subheadline)
-                            
+
                             if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
                                 Button {
                                     startLiveActivity(startTime: lastFeed.timestamp)
@@ -78,7 +78,7 @@ struct TrackerView: View {
                                     .padding(.vertical, 6)
                                     .background(customTimestamp == nil ? Color.gray.opacity(0.1) : Color.blue.opacity(0.1))
                                     .cornerRadius(8)
-                                
+
                                 if customTimestamp != nil {
                                     Image(systemName: "pencil")
                                         .font(.caption)
@@ -97,13 +97,13 @@ struct TrackerView: View {
                         }
                     }
                     .padding(.bottom, 8)
-                    
+
                     // Amount Input
                     VStack(alignment: .leading) {
                         Text(isOz ? "Amount (oz)" : "Amount (ml)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        
+
                         TextField("0.0", text: $amountText)
                             .keyboardType(.decimalPad)
                             .toolbar {
@@ -116,13 +116,13 @@ struct TrackerView: View {
                             .frame(width: 200)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     // Unit Switcher
                     Toggle(isOn: $isOz) {
                         Text(isOz ? "Ounces (oz)" : "Milliliters (ml)")
                     }
                     .fixedSize()
-                    
+
                     // Action Buttons
                     VStack(spacing: 12) {
                         Button(action: logFeed) {
@@ -131,7 +131,7 @@ struct TrackerView: View {
                                 .padding()
                         }
                         .buttonStyle(.borderedProminent)
-                        
+
                         Button(action: { showDiaperSheet = true }) {
                             Label("Log Diaper", systemImage: "drop.fill")
                                 .frame(maxWidth: .infinity)
@@ -141,18 +141,25 @@ struct TrackerView: View {
                         .tint(.secondary)
                     }
                     .padding(.horizontal, 40)
-                    
+
                     // --- RECENT LOGS SECTION ---
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Recent Logs")
                             .font(.headline)
                             .padding(.top)
-                        
+
                         ForEach(recentEvents.prefix(5)) { event in
                             HStack {
-                                Image(systemName: event.type == "FEED" ? "mouth.fill" : "drop.fill")
-                                    .foregroundStyle(event.type == "FEED" ? .blue : .orange)
-                                
+                                if event.type == "FEED" {
+                                    Image(systemName: "mouth.fill")
+                                        .foregroundStyle(.blue)
+                                } else {
+                                    // Custom emoji for each diaper type
+                                    let diaperEmoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦"
+                                    Text(diaperEmoji)
+                                        .font(.title3)
+                                }
+
                                 VStack(alignment: .leading) {
                                     Text(event.type == "FEED" ? "Feed: \(event.amount, specifier: "%.1f") \(event.subtype)" : "Diaper: \(event.subtype)")
                                         .font(.subheadline.bold())
@@ -160,9 +167,9 @@ struct TrackerView: View {
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 if event.type == "FEED" && abs(event.timestamp.timeIntervalSinceNow) < 28800 {
                                     Button {
                                         startLiveActivity(startTime: event.timestamp)
@@ -271,15 +278,15 @@ struct TrackerView: View {
             }
         }
     }
-    
+
     // --- TIMER SYNC LOGIC ---
     private func refreshTimerIfNecessary() {
         guard let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) else { return }
-        
+
         // Check if there's an active Live Activity
         if let currentActivity = Activity<TimerAttributes>.activities.first {
             let currentStartTime = currentActivity.content.state.startTime
-            
+
             // If cloud data has a feed more than 10 seconds different than our current timer
             if abs(lastFeed.timestamp.timeIntervalSince(currentStartTime)) > 10 {
                 startLiveActivity(startTime: lastFeed.timestamp)
@@ -295,7 +302,7 @@ struct TrackerView: View {
     private func logFeed() {
         let amount = Float(amountText) ?? 0.0
         let timestamp = customTimestamp ?? Date()
-        
+
         let newEvent = BabyEvent(
             type: "FEED",
             subtype: isOz ? "oz" : "ml",
@@ -303,17 +310,17 @@ struct TrackerView: View {
             timestamp: timestamp
         )
         modelContext.insert(newEvent)
-        
+
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
-        
+
         startLiveActivity(startTime: timestamp)
-        
+
         amountText = ""
         customTimestamp = nil
         hideKeyboard()
     }
-    
+
     private func startLiveActivity(startTime: Date) {
         for activity in Activity<TimerAttributes>.activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
@@ -323,14 +330,14 @@ struct TrackerView: View {
         let state = TimerAttributes.ContentState(startTime: startTime)
         let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime)
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
-        
+
         do {
             let _ = try Activity.request(
                 attributes: attributes,
                 content: activityContent,
                 pushType: nil
             )
-            
+
             toastMessage = "Live Activity Started"
             withAnimation(.spring()) {
                 showToast = true
@@ -341,7 +348,7 @@ struct TrackerView: View {
             withAnimation { showToast = true }
         }
     }
-    
+
     private func logDiaper(subtype: String) {
         let newEvent = BabyEvent(
             type: "DIAPER",
