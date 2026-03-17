@@ -24,7 +24,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct nurture_foxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @AppStorage("themePreference") private var themePreference: Int = 0
-    
+
     // NEW: Track joining state for the partner
     @State private var isJoiningFamily = false
 
@@ -34,8 +34,9 @@ struct nurture_foxApp: App {
             BabyEvent.self,
             Milestone.self
         ])
-        
+
         let modelConfiguration = ModelConfiguration(
+            schema: schema,
             groupContainer: .identifier(groupID),
             cloudKitDatabase: .automatic
         )
@@ -43,6 +44,7 @@ struct nurture_foxApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
+            print("ModelContainer error: \(error)")
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()
@@ -53,7 +55,7 @@ struct nurture_foxApp: App {
                 ContentView()
                     .preferredColorScheme(scheme)
                     .disabled(isJoiningFamily)
-                
+
                 // --- JOINING SPINNER ---
                 if isJoiningFamily {
                     Color.black.opacity(0.4)
@@ -81,7 +83,7 @@ struct nurture_foxApp: App {
     private func acceptInvitation(url: URL) {
         let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
         isJoiningFamily = true
-        
+
         let fetchMetadataOp = CKFetchShareMetadataOperation(shareURLs: [url])
         fetchMetadataOp.perShareMetadataBlock = { shareURL, metadata, error in
             if let metadata = metadata {
@@ -107,7 +109,7 @@ struct nurture_foxApp: App {
         }
         container.add(fetchMetadataOp)
     }
-    
+
     var scheme: ColorScheme? {
         switch themePreference {
         case 1: return .light

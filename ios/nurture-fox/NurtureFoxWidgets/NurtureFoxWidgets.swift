@@ -15,10 +15,10 @@ struct Provider: AppIntentTimelineProvider {
         // Use the same App Group identifier you set in Capabilities
         let groupID = "group.toleary.nurture-fox"
         let schema = Schema([BabyEvent.self])
-        let config = ModelConfiguration(groupContainer: .identifier(groupID))
-        
+        let config = ModelConfiguration(schema: schema, groupContainer: .identifier(groupID))
+
         do {
-            let container = try ModelContainer(for: schema, configurations: config)
+            let container = try ModelContainer(for: schema, configurations: [config])
             let descriptor = FetchDescriptor<BabyEvent>(
                 predicate: #Predicate { $0.type == "FEED" },
                 sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
@@ -38,10 +38,10 @@ struct Provider: AppIntentTimelineProvider {
         let lastFeed = await fetchLastFeedDate()
         return SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
     }
-    
+
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
         let lastFeed = await fetchLastFeedDate()
-        
+
         let entry = SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
 
         // Refresh every 15 minutes to keep the data current
@@ -72,15 +72,15 @@ struct NurtureFoxWidgetsEntryView : View {
             }
         case .accessoryInline:
             Text("Last: \(entry.lastFeedDate, style: .relative) ago")
-        default: 
+        default:
             VStack(alignment: .leading) {
                 Label("Last Fed", systemImage: "timer")
                     .font(.headline)
                     .foregroundColor(.blue)
-                
+
                 Text(entry.lastFeedDate, style: .relative)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
-                
+
                 Text("at \(entry.lastFeedDate.formatted(date: .omitted, time: .shortened))")
                     .font(.caption)
                     .foregroundStyle(.secondary)

@@ -4,11 +4,11 @@ import SwiftData
 struct DailyLogView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \BabyEvent.timestamp, order: .reverse) private var allEvents: [BabyEvent]
-    
+
     @AppStorage("dailyOzGoal") private var dailyOzGoal: Double = 32.0
     @State private var showGoalEditor = false
     @State private var editingEvent: BabyEvent?
-    
+
     // --- GROUPING LOGIC ---
     private var groupedEvents: [(Date, [BabyEvent])] {
         let calendar = Calendar.current
@@ -22,7 +22,7 @@ struct DailyLogView: View {
         let calendar = Calendar.current
         return allEvents.filter { calendar.isDateInToday($0.timestamp) }
     }
-    
+
     var totalTodayOz: Float {
         calculateVolume(for: todayEvents)
     }
@@ -43,12 +43,12 @@ struct DailyLogView: View {
                             .buttonStyle(.bordered)
                             .tint(.blue)
                         }
-                        
+
                         let progress = CGFloat(totalTodayOz) / CGFloat(dailyOzGoal)
-                        
+
                         ProgressView(value: min(progress, 1.0))
                             .tint(progress >= 1.0 ? .green : .blue)
-                        
+
                         HStack {
                             Text("\(String(format: "%.1f", totalTodayOz)) oz")
                             Text("/")
@@ -62,7 +62,7 @@ struct DailyLogView: View {
                     }
                     .padding(.vertical, 5)
                 }
-                
+
                 // --- DYNAMIC DATE SECTIONS ---
                 ForEach(groupedEvents, id: \.0) { date, events in
                     Section {
@@ -72,14 +72,22 @@ struct DailyLogView: View {
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
-                                        Text(event.type == "FEED" ? "🍼 Feeding" : "💩 Diaper")
-                                            .fontWeight(.bold)
-                                            .foregroundColor(event.type == "FEED" ? .blue : .brown)
-                                        
+                                        if event.type == "FEED" {
+                                            Text("🍼 Feeding")
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.blue)
+                                        } else {
+                                            // Custom emoji for each diaper type
+                                            let diaperEmoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦💩"
+                                            Text("\(diaperEmoji) Diaper")
+                                                .fontWeight(.bold)
+                                                .foregroundColor(event.type == "FEED" ? .blue : .brown)
+                                        }
+
                                         if event.type == "FEED" {
                                             let ozValue = event.subtype == "oz" ? event.amount : event.amount / 30.0
                                             let mlValue = event.subtype == "ml" ? event.amount : event.amount * 30.0
-                                            
+
                                             Text("\(String(format: "%.1f", ozValue)) oz / \(Int(mlValue)) ml")
                                                 .font(.subheadline)
                                                 .foregroundStyle(.secondary)
@@ -103,20 +111,20 @@ struct DailyLogView: View {
                         HStack {
                             Text(formatHeaderDate(date))
                             Spacer()
-                            
+
                             // CALCULATE SUMMARY STATS
                             let dayTotalOz = calculateVolume(for: events)
                             let dayDiapers = events.filter { $0.type == "DIAPER" }.count
-                            
+
                             HStack(spacing: 8) {
                                 if dayTotalOz > 0 {
                                     Text("\(String(format: "%.1f", dayTotalOz)) oz")
                                 }
-                                
+
                                 if dayTotalOz > 0 && dayDiapers > 0 {
                                     Text("•")
                                 }
-                                
+
                                 if dayDiapers > 0 {
                                     Text("\(dayDiapers) \(dayDiapers == 1 ? "Diaper" : "Diapers")")
                                 }
@@ -140,7 +148,7 @@ struct DailyLogView: View {
             }
         }
     }
-    
+
     // --- HELPER FUNCTIONS ---
 
     private func calculateVolume(for events: [BabyEvent]) -> Float {

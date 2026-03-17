@@ -16,7 +16,10 @@ struct NurtureFoxWatch_Watch_AppApp: App {
             BabyEvent.self,
             Milestone.self
         ])
-        let modelConfiguration = ModelConfiguration(groupContainer: .identifier(groupID))
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            groupContainer: .identifier(groupID)
+        )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
@@ -27,7 +30,7 @@ struct NurtureFoxWatch_Watch_AppApp: App {
 
     var body: some Scene {
         WindowGroup {
-            WatchContentView() 
+            WatchContentView()
         }
         .modelContainer(sharedModelContainer)
     }
