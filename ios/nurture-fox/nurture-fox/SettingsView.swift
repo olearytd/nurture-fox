@@ -8,21 +8,21 @@ import CoreData
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
+
     @Query(sort: \BabyEvent.timestamp) private var allEvents: [BabyEvent]
-    
+
     @AppStorage("babyName") private var babyName: String = "Baby"
     @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
     @AppStorage("themePreference") private var themePreference: Int = 0
     @AppStorage("lastBackupDate") private var lastBackupDate: Double = 0
-    
+
     @State private var accountStatus: CKAccountStatus = .couldNotDetermine
-    
+
     // Backup/Restore States
     @State private var showImportPicker = false
     @State private var showRestoreAlert = false
     @State private var selectedFileURL: URL?
-    
+
     // --- SHARING STATE ---
     @State private var isSharingSheetPresented = false
     @State private var activeShare: CKShare?
@@ -41,29 +41,16 @@ struct SettingsView: View {
                 }
 
                 // --- SHARING SECTION ---
-                Section(header: Text("Family Sharing"), footer: Text("Invite a partner to view and log data together using their own iCloud account.")) {
+                Section(header: Text("Family Sharing"), footer: Text("Note: SwiftData does not currently support sharing between different iCloud accounts. Your data syncs perfectly across YOUR devices (iPhone, iPad, Watch).")) {
                     Button {
                         initiateSharing()
                     } label: {
                         HStack {
-                            Label(activeShare == nil ? "Invite Partner" : "Manage Family Sharing",
-                                  systemImage: activeShare == nil ? "person.badge.plus" : "person.2.fill")
+                            Label("Partner Sharing (Not Available)", systemImage: "person.badge.plus")
+                                .foregroundStyle(.secondary)
                             Spacer()
-                            if let share = activeShare {
-                                Text("\(share.participants.count) Active")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                    .disabled(accountStatus != .available)
-                    
-                    if activeShare != nil {
-                        Button(role: .destructive) {
-                            resetSharing()
-                        } label: {
-                            Text("Reset Sharing Connection")
-                                .font(.caption)
+                            Image(systemName: "info.circle")
+                                .foregroundStyle(.blue)
                         }
                     }
                 }
@@ -75,7 +62,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading) {
                             Text(cloudStatusText)
                                 .font(.subheadline)
-                            
+
                             if let lastSync = lastSyncTime {
                                 Text("Last synced: \(lastSync.formatted(date: .omitted, time: .shortened))")
                                     .font(.caption2)
@@ -109,7 +96,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    
+
                     Button(role: .destructive) {
                         showImportPicker = true
                     } label: {
@@ -163,16 +150,16 @@ struct SettingsView: View {
     }
 
     // --- SHARING LOGIC ---
-        
+
     private func fetchExistingShare() async {
         do {
             let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
             let database = container.privateCloudDatabase
             let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
-            
+
             let query = CKQuery(recordType: "cloudkit.share", predicate: NSPredicate(value: true))
             let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
-            
+
             if let firstResult = results.first {
                 let recordResult = firstResult.1
                 if case .success(let record) = recordResult, let share = record as? CKShare {
@@ -187,45 +174,68 @@ struct SettingsView: View {
     }
 
     private func initiateSharing() {
-        print("Sharing: Button Clicked")
-        Task {
-            let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
-            let privateDB = container.privateCloudDatabase
-            self.activeContainer = container
-            
-            let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
-            let customZone = CKRecordZone(zoneID: zoneID)
-            
-            do {
-                try await privateDB.save(customZone)
-                let share = CKShare(recordZoneID: zoneID)
-                share[CKShare.SystemFieldKey.title] = "Nurture Fox Family Data" as CKRecordValue
-                try await privateDB.save(share)
-                
-                await MainActor.run {
-                    self.activeShare = share
-                    self.isSharingSheetPresented = true
-                    print("Sharing: New Share Created and Presented")
+        print("🔵 Sharing: Button Clicked")
+
+        // Show alert explaining SwiftData limitation
+        Task { @MainActor in
+            let alert = UIAlertController(
+                title: "Sharing Not Yet Supported",
+                message: "Unfortunately, SwiftData does not currently support CloudKit sharing between different iCloud accounts.\n\nYour data syncs perfectly across YOUR devices (iPhone, iPad, Watch), but sharing with a partner requires Core Data instead of SwiftData.\n\nWould you like to see the technical details?",
+                preferredStyle: .alert
+            )
+
+            alert.addAction(UIAlertAction(title: "Show Details", style: .default) { _ in
+                self.showTechnicalDetails()
+            })
+
+            alert.addAction(UIAlertAction(title: "OK", style: .cancel))
+
+            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = scene.windows.first,
+               let rootVC = window.rootViewController {
+                var topVC = rootVC
+                while let presentedVC = topVC.presentedViewController {
+                    topVC = presentedVC
                 }
-            } catch {
-                print("Sharing: Initial save failed (likely exists), attempting fetch. Error: \(error.localizedDescription)")
-                
-                await fetchExistingShare()
-                
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s delay
-                
-                await MainActor.run {
-                    if self.activeShare != nil {
-                        self.isSharingSheetPresented = true
-                        print("Sharing: Existing Share Fetched and Presented")
-                    } else {
-                        print("Sharing: Critical Error - ActiveShare is still nil after fetch")
-                    }
-                }
+                topVC.present(alert, animated: true)
             }
         }
     }
-    
+
+    private func showTechnicalDetails() {
+        let alert = UIAlertController(
+            title: "Technical Details",
+            message: """
+            SwiftData Limitation:
+            • SwiftData (iOS 17+) doesn't expose CloudKit records for sharing
+            • Only syncs across devices with the SAME iCloud account
+            • Apple hasn't added multi-user sharing yet
+
+            Workarounds:
+            1. Migrate to Core Data (complex)
+            2. Use a custom backend (Firebase, etc.)
+            3. Wait for Apple to add support
+
+            Your current setup:
+            ✅ Syncs across YOUR devices perfectly
+            ❌ Cannot share with partner's iCloud account
+            """,
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "Got It", style: .default))
+
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = scene.windows.first,
+           let rootVC = window.rootViewController {
+            var topVC = rootVC
+            while let presentedVC = topVC.presentedViewController {
+                topVC = presentedVC
+            }
+            topVC.present(alert, animated: true)
+        }
+    }
+
     private func resetSharing() {
         Task {
             let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
@@ -249,7 +259,7 @@ struct SettingsView: View {
     }
 
     // --- DATA MANAGEMENT LOGIC ---
-    
+
     private func exportCSV() {
         var csvString = "timestamp,type,subtype,amount\n"
         let formatter = ISO8601DateFormatter()
