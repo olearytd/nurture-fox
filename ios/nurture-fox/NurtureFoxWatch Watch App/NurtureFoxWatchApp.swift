@@ -18,12 +18,14 @@ struct NurtureFoxWatch_Watch_AppApp: App {
         ])
         let modelConfiguration = ModelConfiguration(
             schema: schema,
-            groupContainer: .identifier(groupID)
+            groupContainer: .identifier(groupID),
+            cloudKitDatabase: .automatic
         )
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
+            print("Watch ModelContainer error: \(error)")
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()

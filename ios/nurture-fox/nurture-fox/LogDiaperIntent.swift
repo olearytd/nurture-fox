@@ -19,8 +19,16 @@ struct LogDiaperIntent: LiveActivityIntent {
     init(type: String) { self.type = type }
 
     func perform() async throws -> some IntentResult {
-        // Access SwiftData in the background
-        let container = try ModelContainer(for: BabyEvent.self)
+        // Access SwiftData with app group and CloudKit
+        let groupID = "group.toleary.nurture-fox"
+        let schema = Schema([BabyEvent.self, Milestone.self])
+        let config = ModelConfiguration(
+            schema: schema,
+            groupContainer: .identifier(groupID),
+            cloudKitDatabase: .automatic
+        )
+
+        let container = try ModelContainer(for: schema, configurations: [config])
         let context = ModelContext(container)
 
         let newEvent = BabyEvent(type: "DIAPER", subtype: type, amount: 0)

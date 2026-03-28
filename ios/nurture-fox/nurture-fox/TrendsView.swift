@@ -11,16 +11,16 @@ struct DailyVolume: Identifiable {
 
 enum TrendWindow: String, CaseIterable, Identifiable {
     case last7 = "7 Days"
-    case allTime = "All Time"
+    case weekly = "Weekly"
     var id: Self { self }
 }
 
 struct TrendsView: View {
     @Query(sort: \BabyEvent.timestamp, order: .forward) private var allEvents: [BabyEvent]
     @State private var selectedWindow: TrendWindow = .last7
-    
+
     // --- THE BRAIN (Computed Properties) ---
-    
+
     private var feedingEvents: [BabyEvent] { allEvents.filter { $0.type == "FEED" } }
     private var diaperEvents: [BabyEvent] { allEvents.filter { $0.type == "DIAPER" } }
     private var todayEvents: [BabyEvent] { allEvents.filter { Calendar.current.isDateInToday($0.timestamp) } }
@@ -47,7 +47,7 @@ struct TrendsView: View {
         var totalHistoricalVol: Float = 0
         var totalHistoricalDiapers: Float = 0
         var activeDaysCount: Int = 0
-        
+
         for i in 1...7 {
             if let targetDate = calendar.date(byAdding: .day, value: -i, to: now) {
                 let dayEvents = allEvents.filter { calendar.isDate($0.timestamp, inSameDayAs: targetDate) }
@@ -57,7 +57,7 @@ struct TrendsView: View {
                                                  minute: currentComponents.minute ?? 59,
                                                  second: 0,
                                                  of: targetDate) ?? targetDate
-                    
+
                     let dayFeeds = dayEvents.filter { $0.type == "FEED" && $0.timestamp <= cutoffDate }
                     let dayDiapers = dayEvents.filter { $0.type == "DIAPER" && $0.timestamp <= cutoffDate }
                     totalHistoricalVol += dayFeeds.reduce(0) { $0 + getOzAmount($1) }
@@ -185,18 +185,20 @@ struct TrendsContentView: View {
 
     // Dynamic Logic based on toggle
     private var filteredFeedingEvents: [BabyEvent] {
-        if selectedWindow == .allTime { return feedingEvents }
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
         return feedingEvents.filter { $0.timestamp >= cutoff }
     }
 
     private var currentDayCount: Float {
-        selectedWindow == .allTime ? Float(totalActiveDays) : 7.0
+        7.0
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            
+        if selectedWindow == .weekly {
+            WeeklyCalendarView(allEvents: allEvents)
+        } else {
+            VStack(spacing: 20) {
+
             // 1. All-Time Records (Always all-time)
             TrendSection(title: "All-Time Records") {
                 HStack(spacing: 15) {
@@ -215,9 +217,9 @@ struct TrendsContentView: View {
                 Text("\(volDiff >= 0 ? "+" : "")\(String(format: "%.1f", volDiff)) oz vs baseline")
                     .font(.caption.bold())
                     .foregroundColor(volDiff >= 0 ? .green : .red)
-                
+
                 Divider().padding(.vertical, 5)
-                
+
                 let todayDiapers = Float(todayEvents.filter { $0.type == "DIAPER" }.count)
                 let diaperDiff = todayDiapers - baselineStats.diapers
                 TrendRow(label: "Diapers Today", value: "\(Int(todayDiapers))")
@@ -252,7 +254,7 @@ struct TrendsContentView: View {
             TrendSection(title: "Feeding Patterns (\(selectedWindow.rawValue))") {
                 let totalOz = filteredFeedingEvents.reduce(0) { $0 + getOzAmount($1) }
                 let bottleCount = filteredFeedingEvents.count
-                
+
                 TrendRow(label: "Daily Average", value: String(format: "%.1f oz", totalOz / currentDayCount))
                 TrendRow(label: "Bottles per Day", value: String(format: "%.1f", Float(bottleCount) / currentDayCount))
                 TrendRow(label: "Avg. per Bottle", value: String(format: "%.1f oz", totalOz / Float(max(1, bottleCount))))
@@ -268,6 +270,7 @@ struct TrendsContentView: View {
 
             TrendSection(title: "Intervals") {
                 TrendRow(label: "Avg. Time Between Feeds", value: averageInterval)
+            }
             }
         }
     }
@@ -309,6 +312,317 @@ struct TrendRow: View {
             Text(label).foregroundColor(.secondary)
             Spacer()
             Text(value).fontWeight(.semibold)
+        }
+    }
+}
+
+// MARK: - Weekly Calendar View
+struct WeeklyCalendarView: View {
+    let allEvents: [BabyEvent]
+    @State private var selectedEvent: BabyEvent?
+
+    // Get events for the current week (Sunday - Saturday)
+    private var weekEvents: [BabyEvent] {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
+        let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
+
+        return allEvents.filter { $0.timestamp >= weekStart && $0.timestamp < weekEnd }
+    }
+
+    private var weekDays: [Date] {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
+
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: weekStart) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                // Header with day names
+                HStack(spacing: 0) {
+                    ForEach(weekDays, id: \.self) { day in
+                        VStack(spacing: 4) {
+                            Text(day, format: .dateTime.weekday(.abbreviated))
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                            Text(day, format: .dateTime.day())
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.vertical, 8)
+                .background(Color(.systemGroupedBackground))
+
+                // Timeline grid
+                GeometryReader { geometry in
+                    let totalWidth = geometry.size.width
+                    let timeColumnWidth: CGFloat = 44
+                    let calendarWidth = totalWidth - timeColumnWidth
+                    let dayWidth = calendarWidth / 7
+                    let hourHeight: CGFloat = 60
+
+                    ZStack(alignment: .topLeading) {
+                        // Grid lines
+                        VStack(spacing: 0) {
+                            ForEach(0..<24, id: \.self) { hour in
+                                HStack(spacing: 0) {
+                                    // Time label
+                                    Text(formatHour(hour))
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+                                        .frame(width: 40, alignment: .trailing)
+                                        .padding(.trailing, 4)
+
+                                    // Grid line
+                                    Rectangle()
+                                        .fill(Color.gray.opacity(0.2))
+                                        .frame(height: 1)
+                                }
+                                .frame(height: hourHeight)
+                            }
+                        }
+
+                        // Vertical day separators
+                        HStack(spacing: 0) {
+                            Spacer().frame(width: timeColumnWidth)
+                            ForEach(0..<7, id: \.self) { dayIndex in
+                                Color.clear
+                                    .frame(width: dayWidth)
+                                    .overlay(
+                                        Rectangle()
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 1),
+                                        alignment: .leading
+                                    )
+                            }
+                        }
+
+                        // Events - grouped by day and time slot
+                        ForEach(Array(groupEventsByDayAndTime().enumerated()), id: \.offset) { _, group in
+                            ForEach(Array(group.events.enumerated()), id: \.element.id) { index, event in
+                                EventRectangle(
+                                    event: event,
+                                    weekDays: weekDays,
+                                    dayWidth: dayWidth,
+                                    hourHeight: hourHeight,
+                                    horizontalIndex: index,
+                                    totalInSlot: group.events.count,
+                                    timeColumnWidth: timeColumnWidth
+                                )
+                                .onTapGesture {
+                                    selectedEvent = event
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(height: 60 * 24) // 24 hours * 60 points per hour
+                .padding(.leading, 0)
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .sheet(item: $selectedEvent) { event in
+            EventDetailSheet(event: event)
+        }
+    }
+
+    private func formatHour(_ hour: Int) -> String {
+        let calendar = Calendar.current
+        let date = calendar.date(bySettingHour: hour, minute: 0, second: 0, of: Date())!
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
+    // Group events by day and 15-minute time slot
+    private func groupEventsByDayAndTime() -> [EventGroup] {
+        let calendar = Calendar.current
+        var groups: [String: [BabyEvent]] = [:]
+
+        for event in weekEvents {
+            let dayStart = calendar.startOfDay(for: event.timestamp)
+            let components = calendar.dateComponents([.hour, .minute], from: event.timestamp)
+            let hour = components.hour ?? 0
+            let minute = components.minute ?? 0
+            let timeSlot = hour * 60 + (minute / 15) * 15 // Round to 15-min slots
+
+            let key = "\(dayStart.timeIntervalSince1970)-\(timeSlot)"
+            groups[key, default: []].append(event)
+        }
+
+        return groups.map { EventGroup(key: $0.key, events: $0.value) }
+    }
+}
+
+struct EventGroup {
+    let key: String
+    let events: [BabyEvent]
+}
+
+struct EventRectangle: View {
+    let event: BabyEvent
+    let weekDays: [Date]
+    let dayWidth: CGFloat
+    let hourHeight: CGFloat
+    let horizontalIndex: Int
+    let totalInSlot: Int
+    let timeColumnWidth: CGFloat
+
+    var body: some View {
+        let calendar = Calendar.current
+        let eventDay = calendar.startOfDay(for: event.timestamp)
+
+        if let dayIndex = weekDays.firstIndex(where: { calendar.isDate($0, inSameDayAs: eventDay) }) {
+            let components = calendar.dateComponents([.hour, .minute], from: event.timestamp)
+            let hour = CGFloat(components.hour ?? 0)
+            let minute = CGFloat(components.minute ?? 0)
+            let yPosition = (hour + minute / 60.0) * hourHeight
+
+            // Calculate pill width - divide day column width by number of simultaneous events
+            let padding: CGFloat = 4
+            let availableWidth = dayWidth - (padding * 2)
+            let pillWidth: CGFloat = min(availableWidth / CGFloat(totalInSlot) - 2, 50)
+
+            // Calculate X position: time column + (day index * day width) + padding + (horizontal index * pill width)
+            let dayColumnStart = timeColumnWidth + (CGFloat(dayIndex) * dayWidth)
+            let xPosition = dayColumnStart + padding + (CGFloat(horizontalIndex) * (pillWidth + 2))
+
+            RoundedRectangle(cornerRadius: 10)
+                .fill(eventColor)
+                .frame(width: pillWidth, height: 20)
+                .overlay(
+                    HStack(spacing: 2) {
+                        Text(eventIcon)
+                            .font(.system(size: 12))
+                        if event.type == "FEED" && pillWidth > 35 {
+                            Text("\(String(format: "%.0f", event.subtype == "oz" ? event.amount : event.amount / 30.0))")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                )
+                .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
+                .offset(x: xPosition, y: yPosition)
+        }
+    }
+
+    private var eventColor: Color {
+        if event.type == "FEED" {
+            return .blue
+        } else {
+            switch event.subtype {
+            case "Pee": return .yellow
+            case "Poop": return .brown
+            case "Both": return .orange
+            default: return .gray
+            }
+        }
+    }
+
+    private var eventIcon: String {
+        if event.type == "FEED" {
+            return "🍼"
+        } else {
+            switch event.subtype {
+            case "Pee": return "💧"
+            case "Poop": return "💩"
+            case "Both": return "💦"
+            default: return "🔹"
+            }
+        }
+    }
+}
+
+struct EventDetailSheet: View {
+    let event: BabyEvent
+    @Environment(\.dismiss) private var dismiss
+    @State private var showEditSheet = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    HStack {
+                        Text("Type")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        if event.type == "FEED" {
+                            Text("🍼 Feeding")
+                                .fontWeight(.semibold)
+                        } else {
+                            let emoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦"
+                            Text("\(emoji) \(event.subtype) Diaper")
+                                .fontWeight(.semibold)
+                        }
+                    }
+
+                    HStack {
+                        Text("Time")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(event.timestamp, format: .dateTime.hour().minute())
+                            .fontWeight(.semibold)
+                    }
+
+                    HStack {
+                        Text("Date")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(event.timestamp, format: .dateTime.month().day().year())
+                            .fontWeight(.semibold)
+                    }
+
+                    if event.type == "FEED" {
+                        HStack {
+                            Text("Amount")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            let ozValue = event.subtype == "oz" ? event.amount : event.amount / 30.0
+                            let mlValue = event.subtype == "ml" ? event.amount : event.amount * 30.0
+                            Text("\(String(format: "%.1f", ozValue)) oz / \(Int(mlValue)) ml")
+                                .fontWeight(.semibold)
+                        }
+                    }
+
+                    if let note = event.note, !note.isEmpty {
+                        VStack(alignment: .leading) {
+                            Text("Note")
+                                .foregroundColor(.secondary)
+                            Text(note)
+                                .fontWeight(.semibold)
+                        }
+                    }
+                }
+
+                Section {
+                    Button {
+                        showEditSheet = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("Edit Event")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Event Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .sheet(isPresented: $showEditSheet) {
+                EditEventView(event: event)
+            }
         }
     }
 }
