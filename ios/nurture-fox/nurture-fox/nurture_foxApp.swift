@@ -1,11 +1,16 @@
 import SwiftUI
 import SwiftData
+import CoreData
 import CloudKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+
+        // Perform data migration on first launch
+        DataMigrationHelper.migrateIfNeeded()
+
         return true
     }
 
@@ -25,34 +30,18 @@ struct nurture_foxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @AppStorage("themePreference") private var themePreference: Int = 0
 
-    // NEW: Track joining state for the partner
+    // Use Core Data instead of SwiftData
+    @StateObject private var coreDataManager = CoreDataManager.shared
+
+    // Track joining state for the partner
     @State private var isJoiningFamily = false
-
-    var sharedModelContainer: ModelContainer = {
-        let groupID = "group.toleary.nurture-fox"
-        let schema = Schema([
-            BabyEvent.self,
-            Milestone.self
-        ])
-
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            groupContainer: .identifier(groupID),
-            cloudKitDatabase: .automatic
-        )
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            print("ModelContainer error: \(error)")
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
 
     var body: some Scene {
         WindowGroup {
             ZStack {
                 ContentView()
+                    .environment(\.managedObjectContext, coreDataManager.container.viewContext)
+                    .environmentObject(coreDataManager)
                     .preferredColorScheme(scheme)
                     .disabled(isJoiningFamily)
 
@@ -76,7 +65,6 @@ struct nurture_foxApp: App {
                 acceptInvitation(url: url)
             }
         }
-        .modelContainer(sharedModelContainer)
     }
 
     // --- ACCEPTANCE LOGIC ---

@@ -7,26 +7,24 @@
 
 import WidgetKit
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct Provider: AppIntentTimelineProvider {
-    @MainActor
     private func fetchLastFeedDate() -> Date {
-        // Use the same App Group identifier you set in Capabilities
-        let groupID = "group.toleary.nurture-fox"
-        let schema = Schema([BabyEvent.self])
-        let config = ModelConfiguration(schema: schema, groupContainer: .identifier(groupID))
+        let coreDataManager = CoreDataManager.shared
+        let context = coreDataManager.container.viewContext
+
+        let fetchRequest = BabyEventEntity.fetchRequest()
+        fetchRequest.predicate = NSPredicate(format: "type == %@", "FEED")
+        fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)]
+        fetchRequest.fetchLimit = 1
 
         do {
-            let container = try ModelContainer(for: schema, configurations: [config])
-            let descriptor = FetchDescriptor<BabyEvent>(
-                predicate: #Predicate { $0.type == "FEED" },
-                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
-            )
-            let events = try container.mainContext.fetch(descriptor)
+            let events = try context.fetch(fetchRequest)
             return events.first?.timestamp ?? Date()
         } catch {
-            return Date() // Fallback to now if fetch fails
+            print("Widget fetch error: \(error)")
+            return Date()
         }
     }
 
@@ -35,12 +33,12 @@ struct Provider: AppIntentTimelineProvider {
     }
 
     func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        let lastFeed = await fetchLastFeedDate()
+        let lastFeed = fetchLastFeedDate()
         return SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
     }
 
     func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        let lastFeed = await fetchLastFeedDate()
+        let lastFeed = fetchLastFeedDate()
 
         let entry = SimpleEntry(date: Date(), lastFeedDate: lastFeed, configuration: configuration)
 

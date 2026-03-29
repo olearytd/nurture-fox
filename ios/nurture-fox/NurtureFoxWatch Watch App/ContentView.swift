@@ -6,14 +6,18 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
+import WatchKit
 
 struct WatchContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \BabyEvent.timestamp, order: .reverse) private var recentEvents: [BabyEvent]
-    
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)],
+        animation: .default)
+    private var recentEvents: FetchedResults<BabyEventEntity>
+
     @State private var showDiaperOptions = false
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -24,7 +28,7 @@ struct WatchContentView: View {
                         Button("4oz") { logQuickFeed(amount: 4) }
                             .buttonStyle(.borderedProminent)
                     }
-                    
+
                     // Tap to open options, matches the Android "Action Sheet" feel
                     Button {
                         showDiaperOptions = true
@@ -35,15 +39,16 @@ struct WatchContentView: View {
                     .tint(.brown)
                     .buttonStyle(.bordered)
                 }
-                
+
                 Section("Last Feed") {
-                    if let last = recentEvents.first(where: { $0.type == "FEED" }) {
+                    if let last = recentEvents.first(where: { ($0.type ?? "FEED") == "FEED" }) {
                         VStack(alignment: .leading) {
-                            Text(last.timestamp, style: .relative)
+                            Text(last.timestamp ?? Date(), style: .relative)
                                 .font(.headline)
                                 .foregroundColor(.blue)
-                            
-                            let mlAmount = last.subtype == "oz" ? last.amount * 30 : last.amount
+
+                            let subtype = last.subtype ?? "oz"
+                            let mlAmount = subtype == "oz" ? last.amount * 30 : last.amount
                             Text("\(last.amount, specifier: "%.1f") oz / \(Int(mlAmount)) ml")
                                 .font(.caption)
                         }
@@ -59,16 +64,36 @@ struct WatchContentView: View {
             }
         }
     }
-    
+
     private func logQuickFeed(amount: Float) {
-        let event = BabyEvent(type: "FEED", subtype: "oz", amount: amount, timestamp: Date())
-        modelContext.insert(event)
-        WKInterfaceDevice.current().play(.success)
+        let event = BabyEventEntity(context: viewContext)
+        event.id = UUID()
+        event.type = "FEED"
+        event.subtype = "oz"
+        event.amount = amount
+        event.timestamp = Date()
+
+        do {
+            try viewContext.save()
+            WKInterfaceDevice.current().play(.success)
+        } catch {
+            print("Error saving feed: \(error)")
+        }
     }
-    
+
     private func logDiaper(subtype: String = "Pee") {
-        let event = BabyEvent(type: "DIAPER", subtype: subtype, amount: 0, timestamp: Date())
-        modelContext.insert(event)
-        WKInterfaceDevice.current().play(.click)
+        let event = BabyEventEntity(context: viewContext)
+        event.id = UUID()
+        event.type = "DIAPER"
+        event.subtype = subtype
+        event.amount = 0
+        event.timestamp = Date()
+
+        do {
+            try viewContext.save()
+            WKInterfaceDevice.current().play(.click)
+        } catch {
+            print("Error saving diaper: \(error)")
+        }
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CoreData
 import Charts
 
 // 1. DATA STRUCTURE
@@ -16,17 +17,21 @@ enum TrendWindow: String, CaseIterable, Identifiable {
 }
 
 struct TrendsView: View {
-    @Query(sort: \BabyEvent.timestamp, order: .forward) private var allEvents: [BabyEvent]
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: true)],
+        animation: .default)
+    private var allEvents: FetchedResults<BabyEventEntity>
+
     @State private var selectedWindow: TrendWindow = .last7
 
     // --- THE BRAIN (Computed Properties) ---
 
-    private var feedingEvents: [BabyEvent] { allEvents.filter { $0.type == "FEED" } }
-    private var diaperEvents: [BabyEvent] { allEvents.filter { $0.type == "DIAPER" } }
-    private var todayEvents: [BabyEvent] { allEvents.filter { Calendar.current.isDateInToday($0.timestamp) } }
+    private var feedingEvents: [BabyEventEntity] { allEvents.filter { $0.type ?? "FEED" == "FEED" } }
+    private var diaperEvents: [BabyEventEntity] { allEvents.filter { $0.type ?? "FEED" == "DIAPER" } }
+    private var todayEvents: [BabyEventEntity] { allEvents.filter { Calendar.current.isDateInToday($0.timestamp ?? Date()) } }
 
-    private func getOzAmount(_ event: BabyEvent) -> Float {
-        if event.subtype == "ml" {
+    private func getOzAmount(_ event: BabyEventEntity) -> Float {
+        if (event.subtype ?? "oz") == "ml" {
             return event.amount / 30.0
         }
         return event.amount
@@ -35,7 +40,7 @@ struct TrendsView: View {
     // New: Calculate total days used in the app
     private var totalActiveDays: Int {
         let calendar = Calendar.current
-        let dates = Set(allEvents.map { calendar.startOfDay(for: $0.timestamp) })
+        let dates = Set(allEvents.map { calendar.startOfDay(for: $0.timestamp ?? Date()) })
         return max(1, dates.count)
     }
 
@@ -50,7 +55,7 @@ struct TrendsView: View {
 
         for i in 1...7 {
             if let targetDate = calendar.date(byAdding: .day, value: -i, to: now) {
-                let dayEvents = allEvents.filter { calendar.isDate($0.timestamp, inSameDayAs: targetDate) }
+                let dayEvents = allEvents.filter { calendar.isDate($0.timestamp ?? Date(), inSameDayAs: targetDate) }
                 if !dayEvents.isEmpty {
                     activeDaysCount += 1
                     let cutoffDate = calendar.date(bySettingHour: currentComponents.hour ?? 23,
@@ -58,8 +63,8 @@ struct TrendsView: View {
                                                  second: 0,
                                                  of: targetDate) ?? targetDate
 
-                    let dayFeeds = dayEvents.filter { $0.type == "FEED" && $0.timestamp <= cutoffDate }
-                    let dayDiapers = dayEvents.filter { $0.type == "DIAPER" && $0.timestamp <= cutoffDate }
+                    let dayFeeds = dayEvents.filter { ($0.type ?? "FEED") == "FEED" && ($0.timestamp ?? Date()) <= cutoffDate }
+                    let dayDiapers = dayEvents.filter { ($0.type ?? "FEED") == "DIAPER" && ($0.timestamp ?? Date()) <= cutoffDate }
                     totalHistoricalVol += dayFeeds.reduce(0) { $0 + getOzAmount($1) }
                     totalHistoricalDiapers += Float(dayDiapers.count)
                 }
@@ -71,15 +76,15 @@ struct TrendsView: View {
 
     private var milestones: (maxDayVol: Float, maxBottle: Float, longestStretch: Double) {
         let calendar = Calendar.current
-        let groupedByDay = Dictionary(grouping: feedingEvents) { calendar.startOfDay(for: $0.timestamp) }
+        let groupedByDay = Dictionary(grouping: feedingEvents) { calendar.startOfDay(for: $0.timestamp ?? Date()) }
         let dailyTotals = groupedByDay.values.map { $0.reduce(0) { $0 + getOzAmount($1) } }
         let maxDay = dailyTotals.max() ?? 0
         let maxBottle = feedingEvents.map { getOzAmount($0) }.max() ?? 0
         var maxStretch: Double = 0
-        let sortedFeeds = feedingEvents.sorted { $0.timestamp < $1.timestamp }
+        let sortedFeeds = feedingEvents.sorted { ($0.timestamp ?? Date()) < ($1.timestamp ?? Date()) }
         if sortedFeeds.count > 1 {
             for i in 0..<sortedFeeds.count - 1 {
-                let diff = sortedFeeds[i+1].timestamp.timeIntervalSince(sortedFeeds[i].timestamp) / 3600
+                let diff = (sortedFeeds[i+1].timestamp ?? Date()).timeIntervalSince(sortedFeeds[i].timestamp ?? Date()) / 3600
                 if diff > maxStretch { maxStretch = diff }
             }
         }
@@ -87,9 +92,9 @@ struct TrendsView: View {
     }
 
     private var averageInterval: String {
-        let sortedFeeds = feedingEvents.sorted { $0.timestamp < $1.timestamp }
+        let sortedFeeds = feedingEvents.sorted { ($0.timestamp ?? Date()) < ($1.timestamp ?? Date()) }
         guard sortedFeeds.count > 1 else { return "Log more feeds" }
-        let totalHours = sortedFeeds.last!.timestamp.timeIntervalSince(sortedFeeds.first!.timestamp) / 3600
+        let totalHours = (sortedFeeds.last?.timestamp ?? Date()).timeIntervalSince(sortedFeeds.first?.timestamp ?? Date()) / 3600
         return String(format: "%.1f hours", totalHours / Double(sortedFeeds.count - 1))
     }
 
@@ -98,7 +103,7 @@ struct TrendsView: View {
         let today = calendar.startOfDay(for: Date())
         return (0..<7).map { i -> DailyVolume in
             let date = calendar.date(byAdding: .day, value: -i, to: today)!
-            let total = feedingEvents.filter { calendar.isDate($0.timestamp, inSameDayAs: date) }.reduce(0) { $0 + getOzAmount($1) }
+            let total = feedingEvents.filter { calendar.isDate($0.timestamp ?? Date(), inSameDayAs: date) }.reduce(0) { $0 + getOzAmount($1) }
             return DailyVolume(date: date, volume: total)
         }.sorted { $0.date < $1.date }
     }
@@ -118,13 +123,13 @@ struct TrendsView: View {
 
                     TrendsContentView(
                         selectedWindow: selectedWindow,
-                        todayEvents: todayEvents,
+                        todayEvents: Array(todayEvents),
                         baselineStats: baselineStats,
                         last7DaysTotals: last7DaysTotals,
-                        feedingEvents: feedingEvents,
-                        diaperEvents: diaperEvents,
+                        feedingEvents: Array(feedingEvents),
+                        diaperEvents: Array(diaperEvents),
                         averageInterval: averageInterval,
-                        allEvents: allEvents,
+                        allEvents: Array(allEvents),
                         milestones: milestones,
                         totalActiveDays: totalActiveDays,
                         getOzAmount: getOzAmount
@@ -148,13 +153,13 @@ struct TrendsView: View {
     private func renderTrendsToImage() -> URL {
         let shareView = TrendsContentView(
             selectedWindow: selectedWindow,
-            todayEvents: todayEvents,
+            todayEvents: Array(todayEvents),
             baselineStats: baselineStats,
             last7DaysTotals: last7DaysTotals,
-            feedingEvents: feedingEvents,
-            diaperEvents: diaperEvents,
+            feedingEvents: Array(feedingEvents),
+            diaperEvents: Array(diaperEvents),
             averageInterval: averageInterval,
-            allEvents: allEvents,
+            allEvents: Array(allEvents),
             milestones: milestones,
             totalActiveDays: totalActiveDays,
             getOzAmount: getOzAmount
@@ -172,21 +177,21 @@ struct TrendsView: View {
 
 struct TrendsContentView: View {
     let selectedWindow: TrendWindow
-    let todayEvents: [BabyEvent]
+    let todayEvents: [BabyEventEntity]
     let baselineStats: (vol: Float, diapers: Float, activeDays: Int)
     let last7DaysTotals: [DailyVolume]
-    let feedingEvents: [BabyEvent]
-    let diaperEvents: [BabyEvent]
+    let feedingEvents: [BabyEventEntity]
+    let diaperEvents: [BabyEventEntity]
     let averageInterval: String
-    let allEvents: [BabyEvent]
+    let allEvents: [BabyEventEntity]
     let milestones: (maxDayVol: Float, maxBottle: Float, longestStretch: Double)
     let totalActiveDays: Int
-    let getOzAmount: (BabyEvent) -> Float
+    let getOzAmount: (BabyEventEntity) -> Float
 
     // Dynamic Logic based on toggle
-    private var filteredFeedingEvents: [BabyEvent] {
+    private var filteredFeedingEvents: [BabyEventEntity] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date())!
-        return feedingEvents.filter { $0.timestamp >= cutoff }
+        return feedingEvents.filter { ($0.timestamp ?? Date()) >= cutoff }
     }
 
     private var currentDayCount: Float {
@@ -195,7 +200,7 @@ struct TrendsContentView: View {
 
     var body: some View {
         if selectedWindow == .weekly {
-            WeeklyCalendarView(allEvents: allEvents)
+            WeeklyCalendarView(allEvents: Array(allEvents))
         } else {
             VStack(spacing: 20) {
 
@@ -318,17 +323,17 @@ struct TrendRow: View {
 
 // MARK: - Weekly Calendar View
 struct WeeklyCalendarView: View {
-    let allEvents: [BabyEvent]
-    @State private var selectedEvent: BabyEvent?
+    let allEvents: [BabyEventEntity]
+    @State private var selectedEvent: BabyEventEntity?
 
     // Get events for the current week (Sunday - Saturday)
-    private var weekEvents: [BabyEvent] {
+    private var weekEvents: [BabyEventEntity] {
         let calendar = Calendar.current
         let now = Date()
         guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: now)?.start else { return [] }
         let weekEnd = calendar.date(byAdding: .day, value: 7, to: weekStart)!
 
-        return allEvents.filter { $0.timestamp >= weekStart && $0.timestamp < weekEnd }
+        return allEvents.filter { ($0.timestamp ?? Date()) >= weekStart && ($0.timestamp ?? Date()) < weekEnd }
     }
 
     private var weekDays: [Date] {
@@ -441,11 +446,12 @@ struct WeeklyCalendarView: View {
     // Group events by day and 15-minute time slot
     private func groupEventsByDayAndTime() -> [EventGroup] {
         let calendar = Calendar.current
-        var groups: [String: [BabyEvent]] = [:]
+        var groups: [String: [BabyEventEntity]] = [:]
 
         for event in weekEvents {
-            let dayStart = calendar.startOfDay(for: event.timestamp)
-            let components = calendar.dateComponents([.hour, .minute], from: event.timestamp)
+            let timestamp = event.timestamp ?? Date()
+            let dayStart = calendar.startOfDay(for: timestamp)
+            let components = calendar.dateComponents([.hour, .minute], from: timestamp)
             let hour = components.hour ?? 0
             let minute = components.minute ?? 0
             let timeSlot = hour * 60 + (minute / 15) * 15 // Round to 15-min slots
@@ -460,11 +466,11 @@ struct WeeklyCalendarView: View {
 
 struct EventGroup {
     let key: String
-    let events: [BabyEvent]
+    let events: [BabyEventEntity]
 }
 
 struct EventRectangle: View {
-    let event: BabyEvent
+    let event: BabyEventEntity
     let weekDays: [Date]
     let dayWidth: CGFloat
     let hourHeight: CGFloat
@@ -474,10 +480,11 @@ struct EventRectangle: View {
 
     var body: some View {
         let calendar = Calendar.current
-        let eventDay = calendar.startOfDay(for: event.timestamp)
+        let timestamp = event.timestamp ?? Date()
+        let eventDay = calendar.startOfDay(for: timestamp)
 
         if let dayIndex = weekDays.firstIndex(where: { calendar.isDate($0, inSameDayAs: eventDay) }) {
-            let components = calendar.dateComponents([.hour, .minute], from: event.timestamp)
+            let components = calendar.dateComponents([.hour, .minute], from: timestamp)
             let hour = CGFloat(components.hour ?? 0)
             let minute = CGFloat(components.minute ?? 0)
             let yPosition = (hour + minute / 60.0) * hourHeight
@@ -491,6 +498,9 @@ struct EventRectangle: View {
             let dayColumnStart = timeColumnWidth + (CGFloat(dayIndex) * dayWidth)
             let xPosition = dayColumnStart + padding + (CGFloat(horizontalIndex) * (pillWidth + 2))
 
+            let type = event.type ?? "FEED"
+            let subtype = event.subtype ?? "oz"
+
             RoundedRectangle(cornerRadius: 10)
                 .fill(eventColor)
                 .frame(width: pillWidth, height: 20)
@@ -498,8 +508,8 @@ struct EventRectangle: View {
                     HStack(spacing: 2) {
                         Text(eventIcon)
                             .font(.system(size: 12))
-                        if event.type == "FEED" && pillWidth > 35 {
-                            Text("\(String(format: "%.0f", event.subtype == "oz" ? event.amount : event.amount / 30.0))")
+                        if type == "FEED" && pillWidth > 35 {
+                            Text("\(String(format: "%.0f", subtype == "oz" ? event.amount : event.amount / 30.0))")
                                 .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.white)
                         }
@@ -511,10 +521,13 @@ struct EventRectangle: View {
     }
 
     private var eventColor: Color {
-        if event.type == "FEED" {
+        let type = event.type ?? "FEED"
+        let subtype = event.subtype ?? "oz"
+
+        if type == "FEED" {
             return .blue
         } else {
-            switch event.subtype {
+            switch subtype {
             case "Pee": return .yellow
             case "Poop": return .brown
             case "Both": return .orange
@@ -524,10 +537,13 @@ struct EventRectangle: View {
     }
 
     private var eventIcon: String {
-        if event.type == "FEED" {
+        let type = event.type ?? "FEED"
+        let subtype = event.subtype ?? "oz"
+
+        if type == "FEED" {
             return "🍼"
         } else {
-            switch event.subtype {
+            switch subtype {
             case "Pee": return "💧"
             case "Poop": return "💩"
             case "Both": return "💦"
@@ -538,7 +554,7 @@ struct EventRectangle: View {
 }
 
 struct EventDetailSheet: View {
-    let event: BabyEvent
+    let event: BabyEventEntity
     @Environment(\.dismiss) private var dismiss
     @State private var showEditSheet = false
 
@@ -550,12 +566,15 @@ struct EventDetailSheet: View {
                         Text("Type")
                             .foregroundColor(.secondary)
                         Spacer()
-                        if event.type == "FEED" {
+                        let type = event.type ?? "FEED"
+                        let subtype = event.subtype ?? "oz"
+
+                        if type == "FEED" {
                             Text("🍼 Feeding")
                                 .fontWeight(.semibold)
                         } else {
-                            let emoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦"
-                            Text("\(emoji) \(event.subtype) Diaper")
+                            let emoji = subtype == "Pee" ? "💧" : subtype == "Poop" ? "💩" : "💦"
+                            Text("\(emoji) \(subtype) Diaper")
                                 .fontWeight(.semibold)
                         }
                     }
@@ -564,7 +583,7 @@ struct EventDetailSheet: View {
                         Text("Time")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(event.timestamp, format: .dateTime.hour().minute())
+                        Text(event.timestamp ?? Date(), format: .dateTime.hour().minute())
                             .fontWeight(.semibold)
                     }
 
@@ -572,17 +591,18 @@ struct EventDetailSheet: View {
                         Text("Date")
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text(event.timestamp, format: .dateTime.month().day().year())
+                        Text(event.timestamp ?? Date(), format: .dateTime.month().day().year())
                             .fontWeight(.semibold)
                     }
 
-                    if event.type == "FEED" {
+                    if (event.type ?? "FEED") == "FEED" {
                         HStack {
                             Text("Amount")
                                 .foregroundColor(.secondary)
                             Spacer()
-                            let ozValue = event.subtype == "oz" ? event.amount : event.amount / 30.0
-                            let mlValue = event.subtype == "ml" ? event.amount : event.amount * 30.0
+                            let subtype = event.subtype ?? "oz"
+                            let ozValue = subtype == "oz" ? event.amount : event.amount / 30.0
+                            let mlValue = subtype == "ml" ? event.amount : event.amount * 30.0
                             Text("\(String(format: "%.1f", ozValue)) oz / \(Int(mlValue)) ml")
                                 .fontWeight(.semibold)
                         }

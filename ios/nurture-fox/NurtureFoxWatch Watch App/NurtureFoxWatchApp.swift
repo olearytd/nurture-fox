@@ -6,34 +6,21 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 
 @main
 struct NurtureFoxWatch_Watch_AppApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let groupID = "group.toleary.nurture-fox" // Must match the phone exactly
-        let schema = Schema([
-            BabyEvent.self,
-            Milestone.self
-        ])
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            groupContainer: .identifier(groupID),
-            cloudKitDatabase: .automatic
-        )
+    let coreDataManager = CoreDataManager.shared
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            print("Watch ModelContainer error: \(error)")
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        // Migrate any existing SwiftData to Core Data
+        WatchDataMigrationHelper.migrateIfNeeded()
+    }
 
     var body: some Scene {
         WindowGroup {
             WatchContentView()
+                .environment(\.managedObjectContext, coreDataManager.container.viewContext)
         }
-        .modelContainer(sharedModelContainer)
     }
 }

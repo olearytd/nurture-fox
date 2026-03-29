@@ -7,9 +7,13 @@ import CoreData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var coreDataManager: CoreDataManager
 
-    @Query(sort: \BabyEvent.timestamp) private var allEvents: [BabyEvent]
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: true)],
+        animation: .default)
+    private var allEvents: FetchedResults<BabyEventEntity>
 
     @AppStorage("babyName") private var babyName: String = "Baby"
     @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
@@ -28,6 +32,8 @@ struct SettingsView: View {
     @State private var activeShare: CKShare?
     @State private var activeContainer: CKContainer?
     @State private var lastSyncTime: Date? = nil
+    @State private var isLoadingShare = false
+    @State private var shareError: String?
 
     var body: some View {
         NavigationStack {
@@ -41,16 +47,49 @@ struct SettingsView: View {
                 }
 
                 // --- SHARING SECTION ---
-                Section(header: Text("Family Sharing"), footer: Text("Note: SwiftData does not currently support sharing between different iCloud accounts. Your data syncs perfectly across YOUR devices (iPhone, iPad, Watch).")) {
-                    Button {
-                        initiateSharing()
-                    } label: {
+                Section(header: Text("Family Sharing"), footer: Text(activeShare == nil ? "Invite your partner to collaborate on baby tracking. They'll need their own iCloud account." : "Your data is currently being shared. Your partner can access all events.")) {
+                    if isLoadingShare {
                         HStack {
-                            Label("Partner Sharing (Not Available)", systemImage: "person.badge.plus")
-                                .foregroundStyle(.secondary)
+                            Label("Loading...", systemImage: "hourglass")
                             Spacer()
-                            Image(systemName: "info.circle")
-                                .foregroundStyle(.blue)
+                            ProgressView()
+                        }
+                    } else if let error = shareError {
+                        VStack(alignment: .leading) {
+                            Label("Sharing Error", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.red)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if activeShare == nil {
+                        Button {
+                            Task {
+                                await initiateSharing()
+                            }
+                        } label: {
+                            Label("Invite Partner", systemImage: "person.badge.plus")
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Sharing Active", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+
+                            Button {
+                                Task {
+                                    await reshareOrManage()
+                                }
+                            } label: {
+                                Label("Manage Sharing", systemImage: "person.2")
+                            }
+
+                            Button(role: .destructive) {
+                                Task {
+                                    await stopSharing()
+                                }
+                            } label: {
+                                Label("Stop Sharing", systemImage: "xmark.circle")
+                            }
                         }
                     }
                 }
@@ -152,103 +191,98 @@ struct SettingsView: View {
     // --- SHARING LOGIC ---
 
     private func fetchExistingShare() async {
+        await MainActor.run {
+            isLoadingShare = true
+            shareError = nil
+        }
+
         do {
-            let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
-            let database = container.privateCloudDatabase
-            let zoneID = CKRecordZone.ID(zoneName: "NurtureFoxZone", ownerName: CKCurrentUserDefaultName)
-
-            let query = CKQuery(recordType: "cloudkit.share", predicate: NSPredicate(value: true))
-            let (results, _) = try await database.records(matching: query, inZoneWith: zoneID)
-
-            if let firstResult = results.first {
-                let recordResult = firstResult.1
-                if case .success(let record) = recordResult, let share = record as? CKShare {
-                    await MainActor.run {
-                        self.activeShare = share
-                    }
-                }
+            let share = try await coreDataManager.fetchExistingShare()
+            await MainActor.run {
+                self.activeShare = share
+                self.isLoadingShare = false
             }
         } catch {
-            print("Sharing: Fetch failed - \(error.localizedDescription)")
-        }
-    }
-
-    private func initiateSharing() {
-        print("🔵 Sharing: Button Clicked")
-
-        // Show alert explaining SwiftData limitation
-        Task { @MainActor in
-            let alert = UIAlertController(
-                title: "Sharing Not Yet Supported",
-                message: "Unfortunately, SwiftData does not currently support CloudKit sharing between different iCloud accounts.\n\nYour data syncs perfectly across YOUR devices (iPhone, iPad, Watch), but sharing with a partner requires Core Data instead of SwiftData.\n\nWould you like to see the technical details?",
-                preferredStyle: .alert
-            )
-
-            alert.addAction(UIAlertAction(title: "Show Details", style: .default) { _ in
-                self.showTechnicalDetails()
-            })
-
-            alert.addAction(UIAlertAction(title: "OK", style: .cancel))
-
-            if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-               let window = scene.windows.first,
-               let rootVC = window.rootViewController {
-                var topVC = rootVC
-                while let presentedVC = topVC.presentedViewController {
-                    topVC = presentedVC
-                }
-                topVC.present(alert, animated: true)
+            await MainActor.run {
+                self.shareError = "Failed to check sharing status: \(error.localizedDescription)"
+                self.isLoadingShare = false
             }
+            print("❌ Sharing: Fetch failed - \(error.localizedDescription)")
         }
     }
 
-    private func showTechnicalDetails() {
-        let alert = UIAlertController(
-            title: "Technical Details",
-            message: """
-            SwiftData Limitation:
-            • SwiftData (iOS 17+) doesn't expose CloudKit records for sharing
-            • Only syncs across devices with the SAME iCloud account
-            • Apple hasn't added multi-user sharing yet
+    private func initiateSharing() async {
+        print("🔵 Sharing: Creating share...")
 
-            Workarounds:
-            1. Migrate to Core Data (complex)
-            2. Use a custom backend (Firebase, etc.)
-            3. Wait for Apple to add support
-
-            Your current setup:
-            ✅ Syncs across YOUR devices perfectly
-            ❌ Cannot share with partner's iCloud account
-            """,
-            preferredStyle: .alert
-        )
-
-        alert.addAction(UIAlertAction(title: "Got It", style: .default))
-
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = scene.windows.first,
-           let rootVC = window.rootViewController {
-            var topVC = rootVC
-            while let presentedVC = topVC.presentedViewController {
-                topVC = presentedVC
-            }
-            topVC.present(alert, animated: true)
+        await MainActor.run {
+            isLoadingShare = true
+            shareError = nil
         }
-    }
 
-    private func resetSharing() {
-        Task {
-            let container = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
-            let privateDB = container.privateCloudDatabase
-            if let share = activeShare {
-                try await privateDB.deleteRecord(withID: share.recordID)
+        do {
+            // Get all events to share
+            let eventsToShare = Array(allEvents)
+            guard !eventsToShare.isEmpty else {
                 await MainActor.run {
-                    self.activeShare = nil
-                    initiateSharing()
+                    shareError = "No data to share yet. Add some events first!"
+                    isLoadingShare = false
                 }
+                return
             }
+
+            // Create the share
+            let share = try await coreDataManager.createShare(for: eventsToShare)
+
+            await MainActor.run {
+                self.activeShare = share
+                self.activeContainer = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
+                self.isLoadingShare = false
+                self.isSharingSheetPresented = true
+            }
+
+            print("✅ Sharing: Share created successfully!")
+        } catch {
+            await MainActor.run {
+                self.shareError = "Failed to create share: \(error.localizedDescription)"
+                self.isLoadingShare = false
+            }
+            print("❌ Sharing: Creation failed - \(error.localizedDescription)")
         }
     }
+
+    private func reshareOrManage() async {
+        guard let share = activeShare else { return }
+
+        await MainActor.run {
+            self.activeContainer = CKContainer(identifier: "iCloud.com.toleary.nurturefox")
+            self.isSharingSheetPresented = true
+        }
+    }
+
+    private func stopSharing() async {
+        guard let share = activeShare else { return }
+
+        await MainActor.run {
+            isLoadingShare = true
+        }
+
+        do {
+            try await coreDataManager.deleteShare(share)
+            await MainActor.run {
+                self.activeShare = nil
+                self.isLoadingShare = false
+            }
+            print("✅ Sharing: Stopped successfully")
+        } catch {
+            await MainActor.run {
+                self.shareError = "Failed to stop sharing: \(error.localizedDescription)"
+                self.isLoadingShare = false
+            }
+            print("❌ Sharing: Stop failed - \(error.localizedDescription)")
+        }
+    }
+
+
 
     private func checkCloudStatus() {
         CKContainer(identifier: "iCloud.com.toleary.nurturefox").accountStatus { status, _ in
@@ -264,8 +298,10 @@ struct SettingsView: View {
         var csvString = "timestamp,type,subtype,amount\n"
         let formatter = ISO8601DateFormatter()
         for event in allEvents {
-            let ts = formatter.string(from: event.timestamp)
-            let row = "\(ts),\(event.type),\(event.subtype),\(event.amount)\n"
+            let ts = formatter.string(from: event.timestamp ?? Date())
+            let type = event.type ?? "FEED"
+            let subtype = event.subtype ?? "oz"
+            let row = "\(ts),\(type),\(subtype),\(event.amount)\n"
             csvString.append(row)
         }
         let fileManager = FileManager.default
@@ -290,7 +326,12 @@ struct SettingsView: View {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
             let rows = content.components(separatedBy: "\n").filter { !$0.isEmpty }
-            try modelContext.delete(model: BabyEvent.self)
+
+            // Delete all existing events
+            let fetchRequest: NSFetchRequest<NSFetchRequestResult> = BabyEventEntity.fetchRequest()
+            let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+            try viewContext.execute(deleteRequest)
+
             let formatter = ISO8601DateFormatter()
             for (index, row) in rows.enumerated() {
                 if index == 0 { continue }
@@ -298,11 +339,16 @@ struct SettingsView: View {
                 if columns.count == 4 {
                     let date = formatter.date(from: columns[0]) ?? Date()
                     let type = columns[1]; let subtype = columns[2]; let amount = Float(columns[3]) ?? 0.0
-                    let newEvent = BabyEvent(type: type, subtype: subtype, amount: amount, timestamp: date)
-                    modelContext.insert(newEvent)
+
+                    let newEvent = BabyEventEntity(context: viewContext)
+                    newEvent.id = UUID()
+                    newEvent.type = type
+                    newEvent.subtype = subtype
+                    newEvent.amount = amount
+                    newEvent.timestamp = date
                 }
             }
-            try modelContext.save()
+            try viewContext.save()
             WidgetCenter.shared.reloadAllTimelines()
             dismiss()
         } catch { print("Import failed: \(error)") }

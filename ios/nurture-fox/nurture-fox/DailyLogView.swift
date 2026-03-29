@@ -1,26 +1,30 @@
 import SwiftUI
 import SwiftData
+import CoreData
 
 struct DailyLogView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \BabyEvent.timestamp, order: .reverse) private var allEvents: [BabyEvent]
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)],
+        animation: .default)
+    private var allEvents: FetchedResults<BabyEventEntity>
 
     @AppStorage("dailyOzGoal") private var dailyOzGoal: Double = 32.0
     @State private var showGoalEditor = false
-    @State private var editingEvent: BabyEvent?
+    @State private var editingEvent: BabyEventEntity?
 
     // --- GROUPING LOGIC ---
-    private var groupedEvents: [(Date, [BabyEvent])] {
+    private var groupedEvents: [(Date, [BabyEventEntity])] {
         let calendar = Calendar.current
-        let grouped = Dictionary(grouping: allEvents) { event in
-            calendar.startOfDay(for: event.timestamp)
+        let grouped = Dictionary(grouping: Array(allEvents)) { event in
+            calendar.startOfDay(for: event.timestamp ?? Date())
         }
         return grouped.sorted { $0.key > $1.key }
     }
 
-    var todayEvents: [BabyEvent] {
+    var todayEvents: [BabyEventEntity] {
         let calendar = Calendar.current
-        return allEvents.filter { calendar.isDateInToday($0.timestamp) }
+        return allEvents.filter { calendar.isDateInToday($0.timestamp ?? Date()) }
     }
 
     var totalTodayOz: Float {
@@ -72,32 +76,35 @@ struct DailyLogView: View {
                             } label: {
                                 HStack {
                                     VStack(alignment: .leading) {
-                                        if event.type == "FEED" {
+                                        let type = event.type ?? "FEED"
+                                        let subtype = event.subtype ?? "oz"
+
+                                        if type == "FEED" {
                                             Text("🍼 Feeding")
                                                 .fontWeight(.bold)
                                                 .foregroundColor(.blue)
                                         } else {
                                             // Custom emoji for each diaper type
-                                            let diaperEmoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦💩"
+                                            let diaperEmoji = subtype == "Pee" ? "💧" : subtype == "Poop" ? "💩" : "💦💩"
                                             Text("\(diaperEmoji) Diaper")
                                                 .fontWeight(.bold)
-                                                .foregroundColor(event.type == "FEED" ? .blue : .brown)
+                                                .foregroundColor(type == "FEED" ? .blue : .brown)
                                         }
 
-                                        if event.type == "FEED" {
-                                            let ozValue = event.subtype == "oz" ? event.amount : event.amount / 30.0
-                                            let mlValue = event.subtype == "ml" ? event.amount : event.amount * 30.0
+                                        if type == "FEED" {
+                                            let ozValue = subtype == "oz" ? event.amount : event.amount / 30.0
+                                            let mlValue = subtype == "ml" ? event.amount : event.amount * 30.0
 
                                             Text("\(String(format: "%.1f", ozValue)) oz / \(Int(mlValue)) ml")
                                                 .font(.subheadline)
                                                 .foregroundStyle(.secondary)
                                         } else {
-                                            Text(event.subtype)
+                                            Text(subtype)
                                                 .font(.subheadline)
                                         }
                                     }
                                     Spacer()
-                                    Text(event.timestamp, style: .time)
+                                    Text(event.timestamp ?? Date(), style: .time)
                                         .foregroundStyle(.secondary)
                                         .font(.footnote)
                                 }
@@ -114,7 +121,7 @@ struct DailyLogView: View {
 
                             // CALCULATE SUMMARY STATS
                             let dayTotalOz = calculateVolume(for: events)
-                            let dayDiapers = events.filter { $0.type == "DIAPER" }.count
+                            let dayDiapers = events.filter { $0.type ?? "FEED" == "DIAPER" }.count
 
                             HStack(spacing: 8) {
                                 if dayTotalOz > 0 {
@@ -151,9 +158,9 @@ struct DailyLogView: View {
 
     // --- HELPER FUNCTIONS ---
 
-    private func calculateVolume(for events: [BabyEvent]) -> Float {
-        events.filter { $0.type == "FEED" }.reduce(0) { sum, event in
-            sum + (event.subtype == "ml" ? event.amount / 30.0 : event.amount)
+    private func calculateVolume(for events: [BabyEventEntity]) -> Float {
+        events.filter { $0.type ?? "FEED" == "FEED" }.reduce(0) { sum, event in
+            sum + ((event.subtype ?? "oz") == "ml" ? event.amount / 30.0 : event.amount)
         }
     }
 
@@ -168,11 +175,17 @@ struct DailyLogView: View {
         }
     }
 
-    private func deleteItems(at offsets: IndexSet, from events: [BabyEvent]) {
+    private func deleteItems(at offsets: IndexSet, from events: [BabyEventEntity]) {
         withAnimation {
             for index in offsets {
                 let eventToDelete = events[index]
-                modelContext.delete(eventToDelete)
+                viewContext.delete(eventToDelete)
+
+                do {
+                    try viewContext.save()
+                } catch {
+                    print("Error deleting event: \(error)")
+                }
             }
         }
     }
