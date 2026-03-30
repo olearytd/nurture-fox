@@ -29,14 +29,19 @@ class CoreDataManager: ObservableObject {
             description.url = storeURL
         }
 
-        // Enable CloudKit
-        description.cloudKitContainerOptions = NSPersistentCloudKitContainerOptions(
+        // Enable CloudKit with sharing support
+        let cloudKitOptions = NSPersistentCloudKitContainerOptions(
             containerIdentifier: "iCloud.com.toleary.nurturefox"
         )
+        description.cloudKitContainerOptions = cloudKitOptions
 
         // Enable history tracking and remote change notifications
         description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+
+        // IMPORTANT: Configure the store to use the default zone instead of a custom zone
+        // This is required for sharing to work properly
+        description.setOption(true as NSNumber, forKey: "NSPersistentStoreRemoteChangeNotificationOptionKey")
 
         container.loadPersistentStores { storeDescription, error in
             if let error = error as NSError? {

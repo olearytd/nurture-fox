@@ -103,6 +103,7 @@
 				BabyEvent.swift,
 				"BabyEventEntity+CoreDataClass.swift",
 				"BabyEventEntity+CoreDataProperties.swift",
+				CloudSettings.swift,
 				CoreDataManager.swift,
 				Item.swift,
 				LogDiaperIntent.swift,
@@ -120,6 +121,7 @@
 				BabyEvent.swift,
 				"BabyEventEntity+CoreDataClass.swift",
 				"BabyEventEntity+CoreDataProperties.swift",
+				CloudSettings.swift,
 				CoreDataManager.swift,
 				Item.swift,
 				"MilestoneEntity+CoreDataClass.swift",
@@ -656,7 +658,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -695,7 +697,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "nurture-fox/nurture_fox.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -939,7 +941,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "NurtureFoxWatch Watch App/NurtureFoxWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -973,7 +975,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "NurtureFoxWatch Watch App/NurtureFoxWatch Watch App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1097,7 +1099,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = NurtureFoxWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;
@@ -1130,7 +1132,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = NurtureFoxWidgetsExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = LCM5FMVWQD;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = NurtureFoxWidgets/Info.plist;

@@ -4,13 +4,11 @@ import CoreData
 
 struct MilestonesView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var cloudSettings: CloudSettings
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \MilestoneEntity.timestamp, ascending: false)],
         animation: .default)
     private var milestones: FetchedResults<MilestoneEntity>
-
-    // Links to your global baby birthday setting
-    @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
 
     let options = [
         "First Smile", "First Laugh", "Rolling Over", "Sitting Up",
@@ -99,7 +97,7 @@ struct MilestonesView: View {
     }
 
     private func addMilestone(name: String) {
-        let birthDate = Date(timeIntervalSince1970: babyBirthday)
+        let birthDate = cloudSettings.babyBirthday
         let age = calculateAge(from: birthDate, to: Date())
 
         let newMilestone = MilestoneEntity(context: viewContext)

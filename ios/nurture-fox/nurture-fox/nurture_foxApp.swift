@@ -28,10 +28,12 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct nurture_foxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @AppStorage("themePreference") private var themePreference: Int = 0
 
     // Use Core Data instead of SwiftData
     @StateObject private var coreDataManager = CoreDataManager.shared
+
+    // Use iCloud-synced settings
+    @StateObject private var cloudSettings = CloudSettings.shared
 
     // Track joining state for the partner
     @State private var isJoiningFamily = false
@@ -42,7 +44,8 @@ struct nurture_foxApp: App {
                 ContentView()
                     .environment(\.managedObjectContext, coreDataManager.container.viewContext)
                     .environmentObject(coreDataManager)
-                    .preferredColorScheme(scheme)
+                    .environmentObject(cloudSettings)
+                    .preferredColorScheme(cloudSettings.themePreference == 1 ? .light : cloudSettings.themePreference == 2 ? .dark : nil)
                     .disabled(isJoiningFamily)
 
                 // --- JOINING SPINNER ---
@@ -98,11 +101,4 @@ struct nurture_foxApp: App {
         container.add(fetchMetadataOp)
     }
 
-    var scheme: ColorScheme? {
-        switch themePreference {
-        case 1: return .light
-        case 2: return .dark
-        default: return nil
-        }
-    }
 }

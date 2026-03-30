@@ -9,15 +9,13 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject private var coreDataManager: CoreDataManager
+    @EnvironmentObject private var cloudSettings: CloudSettings
 
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: true)],
         animation: .default)
     private var allEvents: FetchedResults<BabyEventEntity>
 
-    @AppStorage("babyName") private var babyName: String = "Baby"
-    @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
-    @AppStorage("themePreference") private var themePreference: Int = 0
     @AppStorage("lastBackupDate") private var lastBackupDate: Double = 0
 
     @State private var accountStatus: CKAccountStatus = .couldNotDetermine
@@ -39,14 +37,14 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 Section("Baby Profile") {
-                    TextField("Baby Name", text: $babyName)
-                    DatePicker("Birthday", selection: Binding(
-                        get: { Date(timeIntervalSince1970: babyBirthday) },
-                        set: { babyBirthday = $0.timeIntervalSince1970 }
-                    ), in: ...Date(), displayedComponents: .date)
+                    TextField("Baby Name", text: $cloudSettings.babyName)
+                    DatePicker("Birthday", selection: $cloudSettings.babyBirthday, in: ...Date(), displayedComponents: .date)
                 }
 
                 // --- SHARING SECTION ---
+                // TEMPORARILY DISABLED: CloudKit sharing needs additional configuration
+                // Will be re-enabled in a future update
+                /*
                 Section(header: Text("Family Sharing"), footer: Text(activeShare == nil ? "Invite your partner to collaborate on baby tracking. They'll need their own iCloud account." : "Your data is currently being shared. Your partner can access all events.")) {
                     if isLoadingShare {
                         HStack {
@@ -93,6 +91,7 @@ struct SettingsView: View {
                         }
                     }
                 }
+                */
 
                 Section("Cloud Sync") {
                     HStack {
@@ -144,7 +143,7 @@ struct SettingsView: View {
                 }
 
                 Section("Appearance") {
-                    Picker("Theme", selection: $themePreference) {
+                    Picker("Theme", selection: $cloudSettings.themePreference) {
                         Text("System").tag(0)
                         Text("Light").tag(1)
                         Text("Dark").tag(2)
@@ -220,9 +219,17 @@ struct SettingsView: View {
         }
 
         do {
-            // Get all events to share
-            let eventsToShare = Array(allEvents)
-            guard !eventsToShare.isEmpty else {
+            // Fetch events from the CoreDataManager's context (not from @FetchRequest)
+            let context = coreDataManager.container.viewContext
+            let fetchRequest: NSFetchRequest<BabyEventEntity> = BabyEventEntity.fetchRequest()
+            fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)]
+            fetchRequest.fetchLimit = 1 // We only need one event to create the share
+
+            let events = try await context.perform {
+                try context.fetch(fetchRequest)
+            }
+
+            guard !events.isEmpty else {
                 await MainActor.run {
                     shareError = "No data to share yet. Add some events first!"
                     isLoadingShare = false
@@ -230,8 +237,8 @@ struct SettingsView: View {
                 return
             }
 
-            // Create the share
-            let share = try await coreDataManager.createShare(for: eventsToShare)
+            // Create the share with just one event (the share zone will include all data)
+            let share = try await coreDataManager.createShare(for: events)
 
             await MainActor.run {
                 self.activeShare = share
@@ -305,7 +312,7 @@ struct SettingsView: View {
             csvString.append(row)
         }
         let fileManager = FileManager.default
-        let tempURL = fileManager.temporaryDirectory.appendingPathComponent("\(babyName)_Backup.csv")
+        let tempURL = fileManager.temporaryDirectory.appendingPathComponent("\(cloudSettings.babyName)_Backup.csv")
         do {
             try csvString.write(to: tempURL, atomically: true, encoding: .utf8)
             let activityVC = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)

@@ -6,6 +6,9 @@ import CoreData
 
 struct TrackerView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var coreDataManager: CoreDataManager
+    @EnvironmentObject private var cloudSettings: CloudSettings
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)],
         animation: .default)
@@ -22,7 +25,8 @@ struct TrackerView: View {
     @State private var showToast: Bool = false
     @State private var toastMessage: String = ""
 
-    @AppStorage("babyName") private var babyName: String = "Baby"
+    // Live Activity State
+    @State private var isLiveActivityRunning: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -49,17 +53,36 @@ struct TrackerView: View {
                                 .font(.subheadline)
 
                             if abs(feedTimestamp.timeIntervalSinceNow) < 28800 {
-                                Button {
-                                    startLiveActivity(startTime: feedTimestamp)
-                                } label: {
-                                    Label("Restart Live Activity", systemImage: "play.circle.fill")
+                                if isLiveActivityRunning {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Live Activity Active")
+                                    }
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.green)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(.white)
+                                    .cornerRadius(20)
+                                    .padding(.top, 10)
+                                } else {
+                                    Button {
+                                        startLiveActivity(startTime: feedTimestamp)
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "play.circle.fill")
+                                            Text("Restart Live Activity")
+                                        }
                                         .font(.caption.bold())
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(.white.opacity(0.2))
+                                        .foregroundStyle(.blue)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(.white)
                                         .cornerRadius(20)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.top, 10)
                                 }
-                                .padding(.top, 10)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -208,13 +231,25 @@ struct TrackerView: View {
             }
             // --- SYNC LISTENERS ---
             .onAppear {
+                checkLiveActivityStatus()
                 refreshTimerIfNecessary()
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .active {
+                    checkLiveActivityStatus()
+                    refreshTimerIfNecessary()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
                 refreshTimerIfNecessary()
             }
+            .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
+                checkLiveActivityStatus()
+            }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+                    .environmentObject(coreDataManager)
+                    .environmentObject(cloudSettings)
             }
             .sheet(isPresented: $showDatePicker) {
                 NavigationStack {
@@ -290,6 +325,10 @@ struct TrackerView: View {
     }
 
     // --- TIMER SYNC LOGIC ---
+    private func checkLiveActivityStatus() {
+        isLiveActivityRunning = !Activity<TimerAttributes>.activities.isEmpty
+    }
+
     private func refreshTimerIfNecessary() {
         guard let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) else { return }
         let feedTimestamp = lastFeed.timestamp ?? Date()
@@ -338,11 +377,12 @@ struct TrackerView: View {
     }
 
     private func startLiveActivity(startTime: Date) {
+        // End any existing activities
         for activity in Activity<TimerAttributes>.activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
 
-        let attributes = TimerAttributes(babyName: babyName)
+        let attributes = TimerAttributes(babyName: cloudSettings.babyName)
         let state = TimerAttributes.ContentState(startTime: startTime)
         let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime)
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
@@ -354,13 +394,16 @@ struct TrackerView: View {
                 pushType: nil
             )
 
+            // Update status
+            isLiveActivityRunning = true
+
             toastMessage = "Live Activity Started"
             withAnimation(.spring()) {
                 showToast = true
             }
         } catch {
-            print("❌ Error: \(error.localizedDescription)")
-            toastMessage = "Error starting Activity"
+            print("❌ Error starting Live Activity: \(error.localizedDescription)")
+            toastMessage = "Error: \(error.localizedDescription)"
             withAnimation { showToast = true }
         }
     }
