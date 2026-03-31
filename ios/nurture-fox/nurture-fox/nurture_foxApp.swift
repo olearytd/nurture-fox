@@ -1,11 +1,16 @@
 import SwiftUI
 import SwiftData
+import CoreData
 import CloudKit
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         application.registerForRemoteNotifications()
+
+        // Perform data migration on first launch
+        DataMigrationHelper.migrateIfNeeded()
+
         return true
     }
 
@@ -23,37 +28,24 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 @main
 struct nurture_foxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
-    @AppStorage("themePreference") private var themePreference: Int = 0
 
-    // NEW: Track joining state for the partner
+    // Use Core Data instead of SwiftData
+    @StateObject private var coreDataManager = CoreDataManager.shared
+
+    // Use iCloud-synced settings
+    @StateObject private var cloudSettings = CloudSettings.shared
+
+    // Track joining state for the partner
     @State private var isJoiningFamily = false
-
-    var sharedModelContainer: ModelContainer = {
-        let groupID = "group.toleary.nurture-fox"
-        let schema = Schema([
-            BabyEvent.self,
-            Milestone.self
-        ])
-
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            groupContainer: .identifier(groupID),
-            cloudKitDatabase: .automatic
-        )
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            print("ModelContainer error: \(error)")
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
 
     var body: some Scene {
         WindowGroup {
             ZStack {
                 ContentView()
-                    .preferredColorScheme(scheme)
+                    .environment(\.managedObjectContext, coreDataManager.container.viewContext)
+                    .environmentObject(coreDataManager)
+                    .environmentObject(cloudSettings)
+                    .preferredColorScheme(cloudSettings.themePreference == 1 ? .light : cloudSettings.themePreference == 2 ? .dark : nil)
                     .disabled(isJoiningFamily)
 
                 // --- JOINING SPINNER ---
@@ -76,7 +68,6 @@ struct nurture_foxApp: App {
                 acceptInvitation(url: url)
             }
         }
-        .modelContainer(sharedModelContainer)
     }
 
     // --- ACCEPTANCE LOGIC ---
@@ -110,11 +101,4 @@ struct nurture_foxApp: App {
         container.add(fetchMetadataOp)
     }
 
-    var scheme: ColorScheme? {
-        switch themePreference {
-        case 1: return .light
-        case 2: return .dark
-        default: return nil
-        }
-    }
 }

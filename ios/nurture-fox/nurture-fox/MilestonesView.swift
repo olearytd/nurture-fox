@@ -1,19 +1,21 @@
 import SwiftUI
 import SwiftData
+import CoreData
 
 struct MilestonesView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Milestone.timestamp, order: .reverse) private var milestones: [Milestone]
-    
-    // Links to your global baby birthday setting
-    @AppStorage("babyBirthday") private var babyBirthday: Double = Date().timeIntervalSince1970
-    
+    @Environment(\.managedObjectContext) private var viewContext
+    @EnvironmentObject private var cloudSettings: CloudSettings
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \MilestoneEntity.timestamp, ascending: false)],
+        animation: .default)
+    private var milestones: FetchedResults<MilestoneEntity>
+
     let options = [
         "First Smile", "First Laugh", "Rolling Over", "Sitting Up",
         "First Solid Food", "Crawling", "First Word", "First Steps",
         "Waving Bye-Bye", "Pulling to Stand", "First Tooth", "Walking"
     ]
-    
+
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
@@ -23,7 +25,7 @@ struct MilestonesView: View {
                     Text("What happened recently?")
                         .font(.headline)
                         .padding(.horizontal)
-                    
+
                     // The Grid of Buttons
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(options, id: \.self) { option in
@@ -40,13 +42,13 @@ struct MilestonesView: View {
                         }
                     }
                     .padding(.horizontal)
-                    
+
                     Divider().padding(.vertical)
-                    
+
                     Text("Memory Book")
                         .font(.title2.bold())
                         .padding(.horizontal)
-                    
+
                     // Milestone List
                     if milestones.isEmpty {
                         ContentUnavailableView("No Memories Yet", systemImage: "star", description: Text("Tap a milestone above to save a memory."))
@@ -57,19 +59,24 @@ struct MilestonesView: View {
                                     Image(systemName: "star.circle.fill")
                                         .foregroundStyle(.yellow)
                                         .font(.title)
-                                    
+
                                     VStack(alignment: .leading) {
-                                        Text(milestone.name)
+                                        Text(milestone.name ?? "Unknown")
                                             .font(.headline)
-                                        Text("Accomplished at: \(milestone.ageAtOccurrence)")
+                                        Text("Accomplished at: \(milestone.ageAtOccurrence ?? "0d")")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }
-                                    
+
                                     Spacer()
-                                    
+
                                     Button(role: .destructive) {
-                                        modelContext.delete(milestone)
+                                        viewContext.delete(milestone)
+                                        do {
+                                            try viewContext.save()
+                                        } catch {
+                                            print("Error deleting milestone: \(error)")
+                                        }
                                     } label: {
                                         Image(systemName: "trash")
                                             .foregroundStyle(.red)
@@ -88,35 +95,39 @@ struct MilestonesView: View {
             .navigationTitle("Milestones")
         }
     }
-    
+
     private func addMilestone(name: String) {
-        let birthDate = Date(timeIntervalSince1970: babyBirthday)
+        let birthDate = cloudSettings.babyBirthday
         let age = calculateAge(from: birthDate, to: Date())
-        
-        let newMilestone = Milestone(
-            name: name,
-            timestamp: Date(),
-            ageAtOccurrence: age
-        )
-        
-        modelContext.insert(newMilestone)
-        
+
+        let newMilestone = MilestoneEntity(context: viewContext)
+        newMilestone.id = UUID()
+        newMilestone.name = name
+        newMilestone.timestamp = Date()
+        newMilestone.ageAtOccurrence = age
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error saving milestone: \(error)")
+        }
+
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
     }
-    
+
     private func calculateAge(from: Date, to: Date) -> String {
         let components = Calendar.current.dateComponents([.year, .month, .day], from: from, to: to)
         let years = components.year ?? 0
         let months = components.month ?? 0
         let days = components.day ?? 0
-        
+
         var ageString = ""
         if years > 0 { ageString += "\(years)y " }
         if months > 0 { ageString += "\(months)m " }
         // Ensure we always show days, even if 0, for "Just Born" accuracy
         ageString += "\(days)d"
-        
+
         return ageString.isEmpty ? "0d" : ageString
     }
 }

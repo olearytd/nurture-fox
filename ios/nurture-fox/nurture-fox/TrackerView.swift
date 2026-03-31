@@ -5,8 +5,14 @@ import Combine
 import CoreData
 
 struct TrackerView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \BabyEvent.timestamp, order: .reverse) private var recentEvents: [BabyEvent]
+    @Environment(\.managedObjectContext) private var viewContext
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var coreDataManager: CoreDataManager
+    @EnvironmentObject private var cloudSettings: CloudSettings
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \BabyEventEntity.timestamp, ascending: false)],
+        animation: .default)
+    private var recentEvents: FetchedResults<BabyEventEntity>
 
     @State private var amountText: String = ""
     @State private var isOz: Bool = true
@@ -19,7 +25,8 @@ struct TrackerView: View {
     @State private var showToast: Bool = false
     @State private var toastMessage: String = ""
 
-    @AppStorage("babyName") private var babyName: String = "Baby"
+    // Live Activity State
+    @State private var isLiveActivityRunning: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -30,29 +37,52 @@ struct TrackerView: View {
 
                     // --- LAST FED STATUS CARD ---
                     if let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) {
+                        let feedTimestamp = lastFeed.timestamp ?? Date()
+                        let feedAmount = lastFeed.amount ?? 0.0
+                        let feedSubtype = lastFeed.subtype ?? "oz"
+
                         VStack(spacing: 8) {
                             Text("LAST FED")
                                 .font(.caption.bold())
                                 .opacity(0.7)
 
-                            Text(lastFeed.timestamp, style: .relative)
+                            Text(feedTimestamp, style: .relative)
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
 
-                            Text("\(lastFeed.amount, specifier: "%.1f") \(lastFeed.subtype) at \(lastFeed.timestamp.formatted(date: .omitted, time: .shortened))")
+                            Text("\(feedAmount, specifier: "%.1f") \(feedSubtype) at \(feedTimestamp.formatted(date: .omitted, time: .shortened))")
                                 .font(.subheadline)
 
-                            if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
-                                Button {
-                                    startLiveActivity(startTime: lastFeed.timestamp)
-                                } label: {
-                                    Label("Restart Live Activity", systemImage: "play.circle.fill")
+                            if abs(feedTimestamp.timeIntervalSinceNow) < 28800 {
+                                if isLiveActivityRunning {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Live Activity Active")
+                                    }
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.green)
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 8)
+                                    .background(.white)
+                                    .cornerRadius(20)
+                                    .padding(.top, 10)
+                                } else {
+                                    Button {
+                                        startLiveActivity(startTime: feedTimestamp)
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "play.circle.fill")
+                                            Text("Restart Live Activity")
+                                        }
                                         .font(.caption.bold())
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(.white.opacity(0.2))
+                                        .foregroundStyle(.blue)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(.white)
                                         .cornerRadius(20)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.top, 10)
                                 }
-                                .padding(.top, 10)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -150,29 +180,32 @@ struct TrackerView: View {
 
                         ForEach(recentEvents.prefix(5)) { event in
                             HStack {
-                                if event.type == "FEED" {
+                                if event.type ?? "FEED" == "FEED" {
                                     Image(systemName: "mouth.fill")
                                         .foregroundStyle(.blue)
                                 } else {
                                     // Custom emoji for each diaper type
-                                    let diaperEmoji = event.subtype == "Pee" ? "💧" : event.subtype == "Poop" ? "💩" : "💦"
+                                    let subtype = event.subtype ?? "Pee"
+                                    let diaperEmoji = subtype == "Pee" ? "💧" : subtype == "Poop" ? "💩" : "💦"
                                     Text(diaperEmoji)
                                         .font(.title3)
                                 }
 
                                 VStack(alignment: .leading) {
-                                    Text(event.type == "FEED" ? "Feed: \(event.amount, specifier: "%.1f") \(event.subtype)" : "Diaper: \(event.subtype)")
+                                    let type = event.type ?? "FEED"
+                                    let subtype = event.subtype ?? "oz"
+                                    Text(type == "FEED" ? "Feed: \(event.amount, specifier: "%.1f") \(subtype)" : "Diaper: \(subtype)")
                                         .font(.subheadline.bold())
-                                    Text(event.timestamp.formatted(date: .abbreviated, time: .shortened))
+                                    Text((event.timestamp ?? Date()).formatted(date: .abbreviated, time: .shortened))
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
 
                                 Spacer()
 
-                                if event.type == "FEED" && abs(event.timestamp.timeIntervalSinceNow) < 28800 {
+                                if let timestamp = event.timestamp, event.type ?? "FEED" == "FEED" && abs(timestamp.timeIntervalSinceNow) < 28800 {
                                     Button {
-                                        startLiveActivity(startTime: event.timestamp)
+                                        startLiveActivity(startTime: timestamp)
                                     } label: {
                                         Image(systemName: "play.circle")
                                             .foregroundStyle(.blue)
@@ -198,13 +231,25 @@ struct TrackerView: View {
             }
             // --- SYNC LISTENERS ---
             .onAppear {
+                checkLiveActivityStatus()
                 refreshTimerIfNecessary()
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .active {
+                    checkLiveActivityStatus()
+                    refreshTimerIfNecessary()
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSPersistentStoreRemoteChange)) { _ in
                 refreshTimerIfNecessary()
             }
+            .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
+                checkLiveActivityStatus()
+            }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+                    .environmentObject(coreDataManager)
+                    .environmentObject(cloudSettings)
             }
             .sheet(isPresented: $showDatePicker) {
                 NavigationStack {
@@ -280,21 +325,26 @@ struct TrackerView: View {
     }
 
     // --- TIMER SYNC LOGIC ---
+    private func checkLiveActivityStatus() {
+        isLiveActivityRunning = !Activity<TimerAttributes>.activities.isEmpty
+    }
+
     private func refreshTimerIfNecessary() {
         guard let lastFeed = recentEvents.first(where: { $0.type == "FEED" }) else { return }
+        let feedTimestamp = lastFeed.timestamp ?? Date()
 
         // Check if there's an active Live Activity
         if let currentActivity = Activity<TimerAttributes>.activities.first {
             let currentStartTime = currentActivity.content.state.startTime
 
             // If cloud data has a feed more than 10 seconds different than our current timer
-            if abs(lastFeed.timestamp.timeIntervalSince(currentStartTime)) > 10 {
-                startLiveActivity(startTime: lastFeed.timestamp)
+            if abs(feedTimestamp.timeIntervalSince(currentStartTime)) > 10 {
+                startLiveActivity(startTime: feedTimestamp)
             }
         } else {
             // If no timer is running, but a feed happened recently (< 8 hours)
-            if abs(lastFeed.timestamp.timeIntervalSinceNow) < 28800 {
-                startLiveActivity(startTime: lastFeed.timestamp)
+            if abs(feedTimestamp.timeIntervalSinceNow) < 28800 {
+                startLiveActivity(startTime: feedTimestamp)
             }
         }
     }
@@ -303,13 +353,18 @@ struct TrackerView: View {
         let amount = Float(amountText) ?? 0.0
         let timestamp = customTimestamp ?? Date()
 
-        let newEvent = BabyEvent(
-            type: "FEED",
-            subtype: isOz ? "oz" : "ml",
-            amount: amount,
-            timestamp: timestamp
-        )
-        modelContext.insert(newEvent)
+        let newEvent = BabyEventEntity(context: viewContext)
+        newEvent.id = UUID()
+        newEvent.type = "FEED"
+        newEvent.subtype = isOz ? "oz" : "ml"
+        newEvent.amount = amount
+        newEvent.timestamp = timestamp
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error saving feed event: \(error)")
+        }
 
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
@@ -322,11 +377,12 @@ struct TrackerView: View {
     }
 
     private func startLiveActivity(startTime: Date) {
+        // End any existing activities
         for activity in Activity<TimerAttributes>.activities {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
 
-        let attributes = TimerAttributes(babyName: babyName)
+        let attributes = TimerAttributes(babyName: cloudSettings.babyName)
         let state = TimerAttributes.ContentState(startTime: startTime)
         let staleDate = Calendar.current.date(byAdding: .hour, value: 12, to: startTime)
         let activityContent = ActivityContent(state: state, staleDate: staleDate)
@@ -338,25 +394,34 @@ struct TrackerView: View {
                 pushType: nil
             )
 
+            // Update status
+            isLiveActivityRunning = true
+
             toastMessage = "Live Activity Started"
             withAnimation(.spring()) {
                 showToast = true
             }
         } catch {
-            print("❌ Error: \(error.localizedDescription)")
-            toastMessage = "Error starting Activity"
+            print("❌ Error starting Live Activity: \(error.localizedDescription)")
+            toastMessage = "Error: \(error.localizedDescription)"
             withAnimation { showToast = true }
         }
     }
 
     private func logDiaper(subtype: String) {
-        let newEvent = BabyEvent(
-            type: "DIAPER",
-            subtype: subtype,
-            amount: 0,
-            timestamp: customTimestamp ?? Date()
-        )
-        modelContext.insert(newEvent)
+        let newEvent = BabyEventEntity(context: viewContext)
+        newEvent.id = UUID()
+        newEvent.type = "DIAPER"
+        newEvent.subtype = subtype
+        newEvent.amount = 0.0
+        newEvent.timestamp = customTimestamp ?? Date()
+
+        do {
+            try viewContext.save()
+        } catch {
+            print("Error saving diaper event: \(error)")
+        }
+
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         customTimestamp = nil
     }
